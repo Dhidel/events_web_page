@@ -2,6 +2,9 @@ import { Elysia } from "elysia";
 import { staticPlugin } from "@elysiajs/static";
 import { html } from "@elysiajs/html";
 import { cors } from "@elysiajs/cors";
+import { connectDB } from "./db";
+
+await connectDB();
 
 const app = new Elysia()
   .use(cors())

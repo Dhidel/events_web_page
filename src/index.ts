@@ -6,19 +6,38 @@ import { connectDB } from "./db";
 
 await connectDB();
 
+const isProduction = process.env.NODE_ENV === "production";
+const VITE_DEV_ORIGIN = "http://localhost:5173";
+const CLIENT_DIST = "client/dist";
+
 const app = new Elysia()
-  .use(cors())
   .use(html())
   .use(
-    staticPlugin({
-      assets: "public",
-      prefix: "/",
-      indexHTML: true,
+    cors({
+      origin: isProduction ? true : VITE_DEV_ORIGIN,
     })
   )
-  // @elysiajs/static registra "" en vez de "/" para el index en Windows
-  // (usa path.sep, que ahí es "\" y no "/"), así que se agrega explícito.
-  .get("/", () => Bun.file("public/index.html"))
-  .listen(3000);
+  .get("/api/health", () => ({ status: "ok" }));
 
-console.log(`Servidor ejecutándose en http://localhost:${app.server?.port}`);
+if (isProduction) {
+  app
+    .use(
+      staticPlugin({
+        assets: CLIENT_DIST,
+        prefix: "/",
+        indexHTML: true,
+      })
+    )
+    // @elysiajs/static registra "" en vez de "/" para el index en Windows
+    // (usa path.sep, que ahí es "\" y no "/"), así que se agrega explícito.
+    .get("/", () => Bun.file(`${CLIENT_DIST}/index.html`))
+    // SPA fallback: cualquier ruta de React Router (/servicios, /cotizador, etc.)
+    // que no sea un archivo estático ni un endpoint /api debe servir index.html.
+    .get("/*", () => Bun.file(`${CLIENT_DIST}/index.html`));
+}
+
+app.listen(3000);
+
+console.log(
+  `Servidor ejecutándose en http://localhost:${app.server?.port} (${isProduction ? "producción — sirviendo client/dist" : "desarrollo — solo API, frontend en " + VITE_DEV_ORIGIN})`
+);

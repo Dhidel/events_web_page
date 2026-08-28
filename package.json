@@ -1,13 +1,16 @@
 {
   "name": "events_web_page",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts"
+    "start": "bun src/index.ts",
+    "create-admin": "bun run src/scripts/create-admin.ts",
+    "test-login": "bun run src/scripts/test-login.ts"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/bun": "latest"
   },
   "peerDependencies": {
@@ -16,7 +19,9 @@
   "dependencies": {
     "@elysiajs/cors": "^1.4.2",
     "@elysiajs/html": "^1.4.2",
+    "@elysiajs/jwt": "^1.4.2",
     "@elysiajs/static": "^1.4.10",
+    "bcrypt": "^6.0.0",
     "elysia": "^1.4.29",
     "mongoose": "^9.9.3"
   }

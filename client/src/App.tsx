@@ -6,6 +6,8 @@ import Cotizador from "./pages/Cotizador";
 import Galeria from "./pages/Galeria";
 import Nosotros from "./pages/Nosotros";
 import Contacto from "./pages/Contacto";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
 
 export default function App() {
   return (
@@ -18,6 +20,9 @@ export default function App() {
         <Route path="/nosotros" element={<Nosotros />} />
         <Route path="/contacto" element={<Contacto />} />
       </Route>
+      {/* Sin Layout público: el panel administrativo no lleva header/footer del sitio ni aparece en la nav */}
+      <Route path="/admin" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
     </Routes>
   );
 }

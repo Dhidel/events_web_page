@@ -17,14 +17,20 @@ export default function Cotizador() {
     }));
   };
 
-  const { total, lines, waMessage } = useMemo(() => {
+  const resetQuoter = () => {
+    setQuantities(Object.fromEntries(SELECTABLE_ACTS.map((act) => [act.id, 0])));
+  };
+
+  const { total, totalQty, lines, waMessage } = useMemo(() => {
     let total = 0;
+    let totalQty = 0;
     const lines: { id: string; name: string; qty: number; subtotal: number }[] = [];
     for (const act of SELECTABLE_ACTS) {
       const qty = quantities[act.id] ?? 0;
       if (qty > 0 && act.price !== null) {
         const subtotal = qty * act.price;
         total += subtotal;
+        totalQty += qty;
         lines.push({ id: act.id, name: act.name, qty, subtotal });
       }
     }
@@ -32,9 +38,10 @@ export default function Cotizador() {
       "Hola! Use el cotizador del sitio y me interesa este estimado:\n" +
       lines.map((l) => `${l.qty}x ${l.name} (Q${l.subtotal.toLocaleString("es-GT")})`).join("\n") +
       `\nTotal estimado: Q${total.toLocaleString("es-GT")}`;
-    return { total, lines, waMessage };
+    return { total, totalQty, lines, waMessage };
   }, [quantities]);
 
+  const hasSelection = totalQty > 0;
   const waHref = `https://wa.me/50230738716?text=${encodeURIComponent(waMessage)}`;
 
   return (
@@ -135,9 +142,29 @@ export default function Cotizador() {
                   )}
                 </div>
 
-                <a href={waHref} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: "26px" }}>
-                  <svg><use href="#i-whatsapp" /></svg>Confirmar este estimado por WhatsApp
-                </a>
+                {hasSelection ? (
+                  <a href={waHref} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: "26px" }}>
+                    <svg><use href="#i-whatsapp" /></svg>Confirmar este estimado por WhatsApp
+                  </a>
+                ) : (
+                  <>
+                    <button type="button" className="btn btn-primary" disabled style={{ width: "100%", justifyContent: "center", marginTop: "26px" }}>
+                      <svg><use href="#i-whatsapp" /></svg>Confirmar este estimado por WhatsApp
+                    </button>
+                    <p className="quoter-hint">Selecciona al menos un personaje para continuar.</p>
+                  </>
+                )}
+
+                {hasSelection && (
+                  <button
+                    type="button"
+                    className="btn btn-reset"
+                    onClick={resetQuoter}
+                    style={{ width: "100%", justifyContent: "center", marginTop: "12px" }}
+                  >
+                    Reiniciar cotización
+                  </button>
+                )}
 
                 <p style={{ fontSize: "11.5px", color: "rgba(255,255,255,.4)", marginTop: "14px", lineHeight: 1.5 }}>
                   * Precio dentro de la Ciudad Capital. Traslado fuera de la capital, horas adicionales y montaje

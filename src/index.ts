@@ -3,12 +3,19 @@ import { staticPlugin } from "@elysiajs/static";
 import { html } from "@elysiajs/html";
 import { cors } from "@elysiajs/cors";
 import { connectDB } from "./db";
+import { authRoutes } from "./routes/auth";
+import { adminGuard } from "./middleware/adminGuard";
 
 await connectDB();
 
 const isProduction = process.env.NODE_ENV === "production";
 const VITE_DEV_ORIGIN = "http://localhost:5173";
 const CLIENT_DIST = "client/dist";
+
+// Todo lo que empiece con /api/admin pasa primero por adminGuard (requiere JWT válido).
+const adminRoutes = new Elysia({ prefix: "/api/admin" })
+  .use(adminGuard)
+  .get("/me", ({ admin }) => ({ admin }));
 
 const app = new Elysia()
   .use(html())
@@ -17,7 +24,9 @@ const app = new Elysia()
       origin: isProduction ? true : VITE_DEV_ORIGIN,
     })
   )
-  .get("/api/health", () => ({ status: "ok" }));
+  .get("/api/health", () => ({ status: "ok" }))
+  .use(authRoutes)
+  .use(adminRoutes);
 
 if (isProduction) {
   app

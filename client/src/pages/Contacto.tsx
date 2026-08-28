@@ -35,6 +35,15 @@ const EVENT_TYPES = [
   "Otro",
 ];
 
+const PHONE_REGEX = /^[+]?[\d\s()-]{7,20}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const isNameValid = (value: string) => value.trim().length > 0;
+const isPhoneValid = (value: string) => PHONE_REGEX.test(value.trim());
+const isEmailValid = (value: string) => EMAIL_REGEX.test(value.trim());
+
+type ContactErrors = { name: string; phone: string; email: string };
+
 export default function Contacto() {
   const [form, setForm] = useState({
     name: "",
@@ -44,9 +53,30 @@ export default function Contacto() {
     date: "",
     details: "",
   });
+  const [errors, setErrors] = useState<ContactErrors>({ name: "", phone: "", email: "" });
+
+  const updateField = (field: keyof ContactErrors, value: string) => {
+    setForm((f) => ({ ...f, [field]: value }));
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const stillInvalid =
+        field === "name" ? !isNameValid(value) : field === "phone" ? !isPhoneValid(value) : !isEmailValid(value);
+      return stillInvalid ? prev : { ...prev, [field]: "" };
+    });
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+
+    const nextErrors: ContactErrors = {
+      name: isNameValid(form.name) ? "" : "Por favor ingresa tu nombre.",
+      phone: isPhoneValid(form.phone) ? "" : "Ingresa un teléfono válido (solo números, espacios, + o -).",
+      email: isEmailValid(form.email) ? "" : "Ingresa un correo electrónico válido.",
+    };
+    setErrors(nextErrors);
+
+    if (nextErrors.name || nextErrors.phone || nextErrors.email) return;
+
     alert("Demo: aquí se enviaría el formulario a tu backend y se notificaría al equipo por WhatsApp.");
   };
 
@@ -117,28 +147,33 @@ export default function Contacto() {
             <p style={{ gridColumn: "1/-1", fontSize: "12.5px", color: "var(--muted)", marginBottom: "6px" }}>
               Más de 25 años diseñando los mejores eventos de Guatemala.
             </p>
-            <input
-              type="text"
-              placeholder="Nombre completo"
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <input
-              type="tel"
-              placeholder="WhatsApp / Teléfono directo"
-              required
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            />
-            <input
-              type="email"
-              className="full"
-              placeholder="Correo electrónico corporativo o personal"
-              required
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
+            <div>
+              <input
+                type="text"
+                placeholder="Nombre completo"
+                value={form.name}
+                onChange={(e) => updateField("name", e.target.value)}
+              />
+              {errors.name && <span className="field-error">{errors.name}</span>}
+            </div>
+            <div>
+              <input
+                type="tel"
+                placeholder="WhatsApp / Teléfono directo"
+                value={form.phone}
+                onChange={(e) => updateField("phone", e.target.value)}
+              />
+              {errors.phone && <span className="field-error">{errors.phone}</span>}
+            </div>
+            <div className="full">
+              <input
+                type="email"
+                placeholder="Correo electrónico corporativo o personal"
+                value={form.email}
+                onChange={(e) => updateField("email", e.target.value)}
+              />
+              {errors.email && <span className="field-error">{errors.email}</span>}
+            </div>
             <select value={form.eventType} onChange={(e) => setForm({ ...form, eventType: e.target.value })}>
               {EVENT_TYPES.map((opt) => (
                 <option key={opt}>{opt}</option>

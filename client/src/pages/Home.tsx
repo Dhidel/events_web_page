@@ -220,31 +220,31 @@ export default function Home() {
             <p>Detrás de cámaras, shows completos, transformaciones de personajes y los eventos más locos del momento — todo lo subimos primero a redes.</p>
           </div>
           <div className="social-cards">
-            <a href="#" className="social-card sc-ig">
+            <a href="https://www.instagram.com/showcompany_gt" target="_blank" rel="noreferrer" className="social-card sc-ig">
               <div className="sc-icon"><svg><use href="#i-ig" /></svg></div>
               <h4>Instagram</h4>
               <span>Reels y detrás de cámaras</span>
               <span className="sc-btn">Seguir<svg><use href="#i-arrow" /></svg></span>
             </a>
-            <a href="#" className="social-card sc-tiktok">
+            <a href="https://www.tiktok.com/@showcompanygt" target="_blank" rel="noreferrer" className="social-card sc-tiktok">
               <div className="sc-icon"><svg><use href="#i-tiktok" /></svg></div>
               <h4>TikTok</h4>
               <span>Los momentos más virales</span>
               <span className="sc-btn">Seguir<svg><use href="#i-arrow" /></svg></span>
             </a>
-            <a href="#" className="social-card sc-fb">
+            <a href="https://www.facebook.com/showcompany" target="_blank" rel="noreferrer" className="social-card sc-fb">
               <div className="sc-icon"><svg><use href="#i-fb" /></svg></div>
               <h4>Facebook</h4>
               <span>Álbumes completos de eventos</span>
               <span className="sc-btn">Seguir<svg><use href="#i-arrow" /></svg></span>
             </a>
-            <a href="#" className="social-card sc-yt">
+            <a href="https://www.youtube.com/@showcompanygt" target="_blank" rel="noreferrer" className="social-card sc-yt">
               <div className="sc-icon"><svg><use href="#i-yt" /></svg></div>
               <h4>YouTube</h4>
               <span>Shows completos en video</span>
               <span className="sc-btn">Suscribirme<svg><use href="#i-arrow" /></svg></span>
             </a>
-            <a href="https://wa.me/50230738716" className="social-card sc-wa">
+            <a href="https://wa.me/50230738716" target="_blank" rel="noreferrer" className="social-card sc-wa">
               <div className="sc-icon"><svg><use href="#i-whatsapp" /></svg></div>
               <h4>WhatsApp</h4>
               <span>Cotiza directo, sin vueltas</span>

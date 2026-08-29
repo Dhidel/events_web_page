@@ -48,7 +48,7 @@ export default function Footer() {
               <a href="https://www.tiktok.com/@showcompanygt" target="_blank" rel="noreferrer" className="s-tiktok" aria-label="TikTok">
                 <svg><use href="#i-tiktok" /></svg>
               </a>
-              <a href="#" className="s-yt" aria-label="YouTube">
+              <a href="https://www.youtube.com/@showcompanygt" target="_blank" rel="noreferrer" className="s-yt" aria-label="YouTube">
                 <svg><use href="#i-yt" /></svg>
               </a>
               <a href="https://wa.me/50230738716" target="_blank" rel="noreferrer" className="s-wa" aria-label="WhatsApp">

@@ -131,7 +131,7 @@ export default function Contacto() {
               <a href="https://www.facebook.com/showcompany" target="_blank" rel="noreferrer" style={{ background: "var(--fb)" }} aria-label="Facebook">
                 <svg><use href="#i-fb" /></svg>
               </a>
-              <a href="#" style={{ background: "var(--yt)" }} aria-label="YouTube">
+              <a href="https://www.youtube.com/@showcompanygt" target="_blank" rel="noreferrer" style={{ background: "var(--yt)" }} aria-label="YouTube">
                 <svg><use href="#i-yt" /></svg>
               </a>
               <a href="https://wa.me/50230738716" target="_blank" rel="noreferrer" style={{ background: "var(--wa)" }} aria-label="WhatsApp">

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
-import { GALLERY_ITEMS } from "../data/gallery";
+import { GALLERY_ITEMS, type GalleryItem } from "../data/gallery";
+import { fetchGallery } from "../lib/api";
 
 const FILTERS: { key: string; label: string }[] = [
   { key: "todos", label: "Todos" },
@@ -14,6 +15,29 @@ const FILTERS: { key: string; label: string }[] = [
 
 export default function Galeria() {
   const [filter, setFilter] = useState("todos");
+  // Arranca con las fotos estáticas y, si la API responde, las reemplaza por las
+  // que administra el panel. Si la API falla, se queda con las estáticas.
+  const [items, setItems] = useState<GalleryItem[]>(GALLERY_ITEMS);
+
+  useEffect(() => {
+    fetchGallery()
+      .then((data) => {
+        if (data.length === 0) return;
+        setItems(
+          data.map((it) => ({
+            id: it.id,
+            img: it.imageUrl,
+            alt: it.alt,
+            category: it.category as GalleryItem["category"],
+            categoryLabel: it.categoryLabel,
+            label: it.label,
+          }))
+        );
+      })
+      .catch(() => {
+        /* sin conexión con la API: se mantienen las fotos estáticas */
+      });
+  }, []);
 
   return (
     <>
@@ -45,7 +69,7 @@ export default function Galeria() {
             ))}
           </div>
           <div className="gallery-grid gallery-grid-big">
-            {GALLERY_ITEMS.map((item) => (
+            {items.map((item) => (
               <div
                 className={filter === "todos" || item.category === filter ? "gallery-item" : "gallery-item hidden"}
                 key={item.id}

@@ -4,6 +4,8 @@ import { html } from "@elysiajs/html";
 import { cors } from "@elysiajs/cors";
 import { connectDB } from "./db";
 import { authRoutes } from "./routes/auth";
+import { galleryRoutes } from "./routes/gallery";
+import { adminGalleryRoutes } from "./routes/adminGallery";
 import { adminGuard } from "./middleware/adminGuard";
 
 await connectDB();
@@ -26,7 +28,9 @@ const app = new Elysia()
   )
   .get("/api/health", () => ({ status: "ok" }))
   .use(authRoutes)
-  .use(adminRoutes);
+  .use(galleryRoutes)
+  .use(adminRoutes)
+  .use(adminGalleryRoutes);
 
 if (isProduction) {
   app

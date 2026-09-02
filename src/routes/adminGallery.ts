@@ -6,20 +6,29 @@ import { uploadImage, deleteImage } from "../lib/cloudinary";
 const categorySchema = t.Union(GALLERY_CATEGORIES.map((value) => t.Literal(value)));
 const imageSchema = t.File({ type: "image", maxSize: "10m" });
 
-// Sube una imagen a Cloudinary y traduce cualquier fallo (incl. "no configurado")
-// en un error 502 con mensaje legible para el panel.
-async function upload(file: File, set: { status?: number | string }) {
+// Error de subida/borrado en Cloudinary (incl. "no configurado"). Se distingue del
+// resto para responder 502 con el mensaje real en vez de un 500 genérico.
+class CloudinaryError extends Error {}
+
+async function upload(file: File) {
   try {
     return await uploadImage(file);
   } catch (error) {
-    set.status = 502;
-    throw new Error((error as Error).message);
+    throw new CloudinaryError((error as Error).message);
   }
 }
 
 // Todas las rutas pasan por adminGuard (requiere JWT válido en Authorization: Bearer).
 export const adminGalleryRoutes = new Elysia({ prefix: "/api/admin/gallery" })
   .use(adminGuard)
+  // Cualquier error no controlado se devuelve como JSON { error } para que el panel
+  // lo muestre tal cual (Elysia por defecto responde texto plano).
+  .onError(({ error, code, set }) => {
+    if (error instanceof CloudinaryError) set.status = 502;
+    else if (code === "VALIDATION") set.status = 422;
+    else if (!set.status || set.status === 200) set.status = 500;
+    return { error: error instanceof Error ? error.message : "Error interno del servidor." };
+  })
   .get("/", async () => {
     const items = await GalleryImage.find().sort({ order: 1, createdAt: 1 });
     return items.map((item) => item.toJSON());
@@ -27,7 +36,7 @@ export const adminGalleryRoutes = new Elysia({ prefix: "/api/admin/gallery" })
   .post(
     "/",
     async ({ body, set }) => {
-      const { url, publicId } = await upload(body.image, set);
+      const { url, publicId } = await upload(body.image);
 
       const doc = await GalleryImage.create({
         imageUrl: url,
@@ -63,7 +72,7 @@ export const adminGalleryRoutes = new Elysia({ prefix: "/api/admin/gallery" })
 
       if (body.image) {
         const previousPublicId = doc.publicId;
-        const { url, publicId } = await upload(body.image, set);
+        const { url, publicId } = await upload(body.image);
         doc.imageUrl = url;
         doc.publicId = publicId;
         // Se borra la anterior después de subir la nueva; si falla, no rompe la operación.

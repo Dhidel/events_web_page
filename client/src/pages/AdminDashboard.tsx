@@ -5,6 +5,7 @@ import {
   adminFetch,
   clearAdminToken,
   getAdminToken,
+  readError,
   UnauthorizedError,
   type GalleryImage,
 } from "../lib/api";
@@ -33,7 +34,7 @@ export default function AdminDashboard() {
     setError("");
     try {
       const res = await adminFetch("/api/admin/gallery");
-      if (!res.ok) throw new Error("No se pudo cargar la galería.");
+      if (!res.ok) throw new Error(await readError(res, "No se pudo cargar la galería."));
       setItems(await res.json());
     } catch (err) {
       if (err instanceof UnauthorizedError) return handleAuthError();
@@ -178,10 +179,9 @@ function NewImageForm({
       if (order.trim() !== "") form.append("order", order);
 
       const res = await adminFetch("/api/admin/gallery", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "No se pudo guardar la foto.");
+      if (!res.ok) throw new Error(await readError(res, "No se pudo guardar la foto."));
 
-      onCreated(data);
+      onCreated(await res.json());
       reset();
     } catch (err) {
       if (err instanceof UnauthorizedError) return onAuthError();
@@ -304,12 +304,11 @@ function GalleryCard({
         method: "PUT",
         body: form,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "No se pudo guardar.");
+      if (!res.ok) throw new Error(await readError(res, "No se pudo guardar."));
 
       pickFile(null);
       setDone(true);
-      onSaved(data);
+      onSaved(await res.json());
     } catch (err) {
       if (err instanceof UnauthorizedError) return onAuthError();
       setError((err as Error).message);
@@ -324,10 +323,7 @@ function GalleryCard({
     setError("");
     try {
       const res = await adminFetch(`/api/admin/gallery/${item.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "No se pudo eliminar.");
-      }
+      if (!res.ok) throw new Error(await readError(res, "No se pudo eliminar."));
       onDeleted(item.id);
     } catch (err) {
       if (err instanceof UnauthorizedError) return onAuthError();

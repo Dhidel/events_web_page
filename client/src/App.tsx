@@ -8,6 +8,7 @@ import Nosotros from "./pages/Nosotros";
 import Contacto from "./pages/Contacto";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminCotizaciones from "./pages/AdminCotizaciones";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
       {/* Sin Layout público: el panel administrativo no lleva header/footer del sitio ni aparece en la nav */}
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route path="/admin/cotizaciones" element={<AdminCotizaciones />} />
     </Routes>
   );
 }

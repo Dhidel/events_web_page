@@ -1,14 +1,23 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
 import { ACTS } from "../data/acts";
+import { EVENT_TYPES } from "../data/eventTypes";
+import { isNameValid, isPhoneValid, isEmailValid } from "../lib/validators";
+import { submitCotizacion } from "../lib/api";
 
 const SELECTABLE_ACTS = ACTS.filter((act) => act.price !== null);
+
+type ContactField = "name" | "phone" | "email";
+type ContactState = Record<ContactField, string>;
 
 export default function Cotizador() {
   const [quantities, setQuantities] = useState<Record<string, number>>(() =>
     Object.fromEntries(SELECTABLE_ACTS.map((act) => [act.id, 0]))
   );
+  const [contact, setContact] = useState<ContactState>({ name: "", phone: "", email: "" });
+  const [contactErrors, setContactErrors] = useState<ContactState>({ name: "", phone: "", email: "" });
+  const [eventType, setEventType] = useState(EVENT_TYPES[0]);
 
   const changeQty = (id: string, delta: number) => {
     setQuantities((prev) => ({
@@ -19,6 +28,19 @@ export default function Cotizador() {
 
   const resetQuoter = () => {
     setQuantities(Object.fromEntries(SELECTABLE_ACTS.map((act) => [act.id, 0])));
+    setContact({ name: "", phone: "", email: "" });
+    setContactErrors({ name: "", phone: "", email: "" });
+    setEventType(EVENT_TYPES[0]);
+  };
+
+  const updateContact = (field: ContactField, value: string) => {
+    setContact((c) => ({ ...c, [field]: value }));
+    setContactErrors((prev) => {
+      if (!prev[field]) return prev;
+      const stillInvalid =
+        field === "name" ? !isNameValid(value) : field === "phone" ? !isPhoneValid(value) : !isEmailValid(value);
+      return stillInvalid ? prev : { ...prev, [field]: "" };
+    });
   };
 
   const { total, totalQty, lines, waMessage } = useMemo(() => {
@@ -43,6 +65,36 @@ export default function Cotizador() {
 
   const hasSelection = totalQty > 0;
   const waHref = `https://wa.me/50230738716?text=${encodeURIComponent(waMessage)}`;
+
+  const handleConfirm = (e: MouseEvent<HTMLAnchorElement>) => {
+    const nextErrors: ContactState = {
+      name: isNameValid(contact.name) ? "" : "Ingresa tu nombre.",
+      phone: isPhoneValid(contact.phone) ? "" : "Ingresa un teléfono válido.",
+      email: isEmailValid(contact.email) ? "" : "Ingresa un correo válido.",
+    };
+    setContactErrors(nextErrors);
+
+    if (nextErrors.name || nextErrors.phone || nextErrors.email) {
+      e.preventDefault();
+      return;
+    }
+
+    // No se espera esta llamada ni se hace preventDefault: WhatsApp debe abrirse
+    // de inmediato sin importar si el guardado en el backend falla o tarda.
+    submitCotizacion({
+      nombre: contact.name.trim(),
+      telefono: contact.phone.trim(),
+      correo: contact.email.trim(),
+      tipoEvento: eventType !== EVENT_TYPES[0] ? eventType : undefined,
+      origen: "cotizador",
+      detalleCotizador: {
+        personajes: lines.map((l) => ({ nombre: l.name, cantidad: l.qty, subtotal: l.subtotal })),
+        total,
+      },
+    }).catch((error) => {
+      console.error("No se pudo guardar la solicitud del cotizador en el backend:", error);
+    });
+  };
 
   return (
     <>
@@ -142,8 +194,55 @@ export default function Cotizador() {
                   )}
                 </div>
 
+                {hasSelection && (
+                  <div className="quoter-contact">
+                    <span className="eyebrow" style={{ color: "var(--blue-light)", marginBottom: 0 }}>
+                      Tus datos de contacto
+                    </span>
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Nombre completo"
+                        value={contact.name}
+                        onChange={(e) => updateContact("name", e.target.value)}
+                      />
+                      {contactErrors.name && <span className="field-error">{contactErrors.name}</span>}
+                    </div>
+                    <div>
+                      <input
+                        type="tel"
+                        placeholder="WhatsApp / Teléfono"
+                        value={contact.phone}
+                        onChange={(e) => updateContact("phone", e.target.value)}
+                      />
+                      {contactErrors.phone && <span className="field-error">{contactErrors.phone}</span>}
+                    </div>
+                    <div>
+                      <input
+                        type="email"
+                        placeholder="Correo electrónico"
+                        value={contact.email}
+                        onChange={(e) => updateContact("email", e.target.value)}
+                      />
+                      {contactErrors.email && <span className="field-error">{contactErrors.email}</span>}
+                    </div>
+                    <select value={eventType} onChange={(e) => setEventType(e.target.value)}>
+                      {EVENT_TYPES.map((opt) => (
+                        <option key={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {hasSelection ? (
-                  <a href={waHref} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: "26px" }}>
+                  <a
+                    href={waHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-primary"
+                    style={{ width: "100%", justifyContent: "center", marginTop: "16px" }}
+                    onClick={handleConfirm}
+                  >
                     <svg><use href="#i-whatsapp" /></svg>Confirmar este estimado por WhatsApp
                   </a>
                 ) : (

@@ -6,6 +6,8 @@ import { connectDB } from "./db";
 import { authRoutes } from "./routes/auth";
 import { galleryRoutes } from "./routes/gallery";
 import { adminGalleryRoutes } from "./routes/adminGallery";
+import { cotizacionesRoutes } from "./routes/cotizaciones";
+import { adminCotizacionesRoutes } from "./routes/adminCotizaciones";
 import { adminGuard } from "./middleware/adminGuard";
 
 await connectDB();
@@ -29,8 +31,10 @@ const app = new Elysia()
   .get("/api/health", () => ({ status: "ok" }))
   .use(authRoutes)
   .use(galleryRoutes)
+  .use(cotizacionesRoutes)
   .use(adminRoutes)
-  .use(adminGalleryRoutes);
+  .use(adminGalleryRoutes)
+  .use(adminCotizacionesRoutes);
 
 if (isProduction) {
   app

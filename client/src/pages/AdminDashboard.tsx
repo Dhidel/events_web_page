@@ -79,6 +79,9 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="admin-dash-head-actions">
+          <Link to="/admin/cotizaciones" className="btn btn-ghost">
+            Cotizaciones
+          </Link>
           <Link to="/galeria" className="btn btn-ghost" target="_blank">
             Ver galería
           </Link>

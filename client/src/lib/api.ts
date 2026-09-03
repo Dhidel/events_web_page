@@ -12,6 +12,22 @@ export interface GalleryImage {
   order: number;
 }
 
+export type SolicitudOrigen = "cotizador" | "contacto";
+export type SolicitudEstado = "nuevo" | "contactado" | "propuesta_enviada" | "confirmado";
+
+export interface Solicitud {
+  id: string;
+  nombre: string;
+  telefono: string;
+  correo: string;
+  tipoEvento?: string;
+  mensaje?: string;
+  origen: SolicitudOrigen;
+  detalleCotizador?: Record<string, unknown>;
+  estado: SolicitudEstado;
+  createdAt: string;
+}
+
 export function getAdminToken(): string | null {
   return localStorage.getItem("adminToken");
 }
@@ -25,6 +41,16 @@ export async function fetchGallery(): Promise<GalleryImage[]> {
   const res = await fetch(`${API_BASE}/api/gallery`);
   if (!res.ok) throw new Error("No se pudo cargar la galería.");
   return res.json();
+}
+
+export interface CotizacionPayload {
+  nombre: string;
+  telefono: string;
+  correo: string;
+  tipoEvento?: string;
+  mensaje?: string;
+  origen: SolicitudOrigen;
+  detalleCotizador?: Record<string, unknown>;
 }
 
 export class UnauthorizedError extends Error {}
@@ -58,4 +84,15 @@ export async function adminFetch(path: string, init: RequestInit = {}): Promise<
   }
 
   return res;
+}
+
+// Endpoint público que usan el formulario de Contacto y el Cotizador al confirmar.
+export async function submitCotizacion(payload: CotizacionPayload): Promise<Solicitud> {
+  const res = await fetch(`${API_BASE}/api/cotizaciones`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await readError(res, "No se pudo enviar la solicitud."));
+  return res.json();
 }

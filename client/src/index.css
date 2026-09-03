@@ -294,11 +294,16 @@
   input:focus, select:focus, textarea:focus{outline:2px solid var(--blue);outline-offset:1px;border-color:var(--blue);}
   input::placeholder, textarea::placeholder{color:var(--muted);opacity:1;}
   select{color-scheme:dark;}
+  select option{background-color:var(--surface);color:var(--ink);}
   textarea{resize:vertical;min-height:90px;}
   form button{grid-column:1/-1;justify-content:center;width:100%;padding:15px;font-size:15px;}
   form button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;}
   .field-error{display:block;color:#ff5c5c;font-size:12px;margin-top:6px;line-height:1.4;}
+  .form-success{display:block;color:var(--wa);font-weight:700;font-size:13.5px;line-height:1.4;}
   .quoter-hint{font-size:13px;color:var(--muted);text-align:center;margin-top:10px;}
+  .quoter-contact{display:flex;flex-direction:column;gap:10px;margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,.12);}
+  .quoter-contact input,.quoter-contact select{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.18);color:#fff;}
+  .quoter-contact input::placeholder{color:rgba(255,255,255,.4);}
   .btn-reset{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);}
   .btn-reset:hover{border-color:#fff;color:#fff;}
 
@@ -519,3 +524,38 @@
     .admin-dash-newform-body{grid-template-columns:1fr;}
     .admin-dash-grid{grid-template-columns:1fr;}
   }
+
+  /* ADMIN DASHBOARD — COTIZACIONES */
+  .cotiz-counters{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px;}
+  .cotiz-counter{
+    background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--line);border-radius:14px;
+    padding:16px 14px;text-align:left;cursor:pointer;font-family:inherit;color:var(--ink);
+    transition:.2s border-color,.2s transform;
+  }
+  .cotiz-counter:hover{transform:translateY(-2px);}
+  .cotiz-counter.active{box-shadow:0 0 0 1px var(--blue);}
+  .cotiz-counter strong{display:block;font-size:24px;font-weight:900;margin-bottom:2px;}
+  .cotiz-counter span{font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+  .cotiz-counter-nuevo{border-top-color:var(--blue-light);}
+  .cotiz-counter-contactado{border-top-color:#eab308;}
+  .cotiz-counter-propuesta{border-top-color:#a78bfa;}
+  .cotiz-counter-confirmado{border-top-color:var(--wa);}
+
+  .cotiz-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface);}
+  .cotiz-table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px;}
+  .cotiz-table th{text-align:left;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:14px 16px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .cotiz-table td{padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  .cotiz-table tr:last-child td{border-bottom:none;}
+  .cotiz-name{font-weight:700;color:var(--ink);}
+  .cotiz-email{font-size:12px;color:var(--muted);margin-top:2px;}
+  .cotiz-estado-cell{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .cotiz-badge{display:inline-block;font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap;}
+  .cotiz-select{width:auto;display:inline-block;padding:6px 10px;font-size:12.5px;border-radius:8px;}
+
+  .cotiz-badge-nuevo{background:rgba(51,149,255,.18);color:var(--blue-light);}
+  .cotiz-badge-contactado{background:rgba(234,179,8,.18);color:#eab308;}
+  .cotiz-badge-propuesta{background:rgba(167,139,250,.2);color:#a78bfa;}
+  .cotiz-badge-confirmado{background:rgba(37,211,102,.18);color:var(--wa);}
+
+  @media(max-width:900px){.cotiz-counters{grid-template-columns:repeat(3,1fr);}}
+  @media(max-width:640px){.cotiz-counters{grid-template-columns:repeat(2,1fr);}}

@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import aveTematico from "../assets/img/ave-tematico.jpg";
+import { EVENT_TYPES } from "../data/eventTypes";
+import { isNameValid, isPhoneValid, isEmailValid } from "../lib/validators";
+import { submitCotizacion } from "../lib/api";
 
 const FAQS = [
   {
@@ -25,23 +28,6 @@ const FAQS = [
   },
 ];
 
-const EVENT_TYPES = [
-  "¿Qué tipo de evento estás planificando?",
-  "Evento Corporativo / Empresarial",
-  "Concierto o Espectáculo Masivo",
-  "Gala o Celebración Privada Premium",
-  "Boda",
-  "Quinceaños",
-  "Otro",
-];
-
-const PHONE_REGEX = /^[+]?[\d\s()-]{7,20}$/;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const isNameValid = (value: string) => value.trim().length > 0;
-const isPhoneValid = (value: string) => PHONE_REGEX.test(value.trim());
-const isEmailValid = (value: string) => EMAIL_REGEX.test(value.trim());
-
 type ContactErrors = { name: string; phone: string; email: string };
 
 export default function Contacto() {
@@ -54,6 +40,9 @@ export default function Contacto() {
     details: "",
   });
   const [errors, setErrors] = useState<ContactErrors>({ name: "", phone: "", email: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const updateField = (field: keyof ContactErrors, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -65,7 +54,7 @@ export default function Contacto() {
     });
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     const nextErrors: ContactErrors = {
@@ -77,7 +66,27 @@ export default function Contacto() {
 
     if (nextErrors.name || nextErrors.phone || nextErrors.email) return;
 
-    alert("Demo: aquí se enviaría el formulario a tu backend y se notificaría al equipo por WhatsApp.");
+    setSubmitting(true);
+    setSubmitError("");
+    setSubmitSuccess(false);
+
+    try {
+      await submitCotizacion({
+        nombre: form.name.trim(),
+        telefono: form.phone.trim(),
+        correo: form.email.trim(),
+        mensaje: form.details.trim() || undefined,
+        tipoEvento: form.eventType !== EVENT_TYPES[0] ? form.eventType : undefined,
+        origen: "contacto",
+      });
+
+      setSubmitSuccess(true);
+      setForm({ name: "", phone: "", email: "", eventType: EVENT_TYPES[0], date: "", details: "" });
+    } catch (err) {
+      setSubmitError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -191,8 +200,14 @@ export default function Contacto() {
               value={form.details}
               onChange={(e) => setForm({ ...form, details: e.target.value })}
             />
-            <button type="submit" className="btn btn-primary">
-              Enviar solicitud<svg><use href="#i-whatsapp" /></svg>
+            {submitSuccess && (
+              <p className="full form-success">¡Recibimos tu solicitud! Te contactaremos pronto.</p>
+            )}
+            {submitError && <p className="full field-error">{submitError}</p>}
+
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? "Enviando..." : "Enviar solicitud"}
+              <svg><use href="#i-whatsapp" /></svg>
             </button>
           </form>
         </div>

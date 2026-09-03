@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
+import ScrollToTop from "./components/ScrollToTop";
 import Home from "./pages/Home";
 import Servicios from "./pages/Servicios";
 import Cotizador from "./pages/Cotizador";
@@ -11,18 +12,21 @@ import AdminDashboard from "./pages/AdminDashboard";
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/servicios" element={<Servicios />} />
-        <Route path="/cotizador" element={<Cotizador />} />
-        <Route path="/galeria" element={<Galeria />} />
-        <Route path="/nosotros" element={<Nosotros />} />
-        <Route path="/contacto" element={<Contacto />} />
-      </Route>
-      {/* Sin Layout público: el panel administrativo no lleva header/footer del sitio ni aparece en la nav */}
-      <Route path="/admin" element={<AdminLogin />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-    </Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/servicios" element={<Servicios />} />
+          <Route path="/cotizador" element={<Cotizador />} />
+          <Route path="/galeria" element={<Galeria />} />
+          <Route path="/nosotros" element={<Nosotros />} />
+          <Route path="/contacto" element={<Contacto />} />
+        </Route>
+        {/* Sin Layout público: el panel administrativo no lleva header/footer del sitio ni aparece en la nav */}
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      </Routes>
+    </>
   );
 }

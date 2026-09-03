@@ -412,6 +412,7 @@
   .filter-btn.active{background:linear-gradient(135deg,var(--blue),var(--blue-dark));color:#fff;border-color:transparent;}
   .gallery-grid.gallery-grid-big{grid-template-columns:repeat(3,1fr);}
   .gallery-item.hidden{display:none;}
+  .gallery-empty{color:var(--muted);font-size:14.5px;text-align:center;padding:56px 0;}
   @media(max-width:1000px){.gallery-grid.gallery-grid-big{grid-template-columns:repeat(2,1fr);}}
   @media(max-width:680px){.gallery-grid.gallery-grid-big{grid-template-columns:1fr;}}
 

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
-import { GALLERY_ITEMS, type GalleryItem } from "../data/gallery";
-import { fetchGallery } from "../lib/api";
+import { fetchGallery, type GalleryImage } from "../lib/api";
 
 const FILTERS: { key: string; label: string }[] = [
   { key: "todos", label: "Todos" },
@@ -15,28 +14,17 @@ const FILTERS: { key: string; label: string }[] = [
 
 export default function Galeria() {
   const [filter, setFilter] = useState("todos");
-  // Arranca con las fotos estáticas y, si la API responde, las reemplaza por las
-  // que administra el panel. Si la API falla, se queda con las estáticas.
-  const [items, setItems] = useState<GalleryItem[]>(GALLERY_ITEMS);
+  // La galería se sirve entera desde /api/gallery (la administra el panel admin).
+  const [items, setItems] = useState<GalleryImage[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
     fetchGallery()
       .then((data) => {
-        if (data.length === 0) return;
-        setItems(
-          data.map((it) => ({
-            id: it.id,
-            img: it.imageUrl,
-            alt: it.alt,
-            category: it.category as GalleryItem["category"],
-            categoryLabel: it.categoryLabel,
-            label: it.label,
-          }))
-        );
+        setItems(data);
+        setStatus("ready");
       })
-      .catch(() => {
-        /* sin conexión con la API: se mantienen las fotos estáticas */
-      });
+      .catch(() => setStatus("error"));
   }, []);
 
   return (
@@ -68,19 +56,34 @@ export default function Galeria() {
               </button>
             ))}
           </div>
-          <div className="gallery-grid gallery-grid-big">
-            {items.map((item) => (
-              <div
-                className={filter === "todos" || item.category === filter ? "gallery-item" : "gallery-item hidden"}
-                key={item.id}
-              >
-                <img src={item.img} alt={item.alt} />
-                <span className="gallery-tag">{item.categoryLabel}</span>
-                <span className="gallery-label">{item.label}</span>
-                <span className="gallery-zoom"><svg><use href="#i-search" /></svg></span>
-              </div>
-            ))}
-          </div>
+
+          {status === "loading" && <p className="gallery-empty">Cargando galería…</p>}
+          {status === "error" && (
+            <p className="gallery-empty">No se pudo cargar la galería. Intenta de nuevo más tarde.</p>
+          )}
+          {status === "ready" && items.length === 0 && (
+            <p className="gallery-empty">Todavía no hay fotos en la galería.</p>
+          )}
+
+          {status === "ready" && items.length > 0 && (
+            <div className="gallery-grid gallery-grid-big">
+              {items.map((item) => (
+                <div
+                  className={
+                    filter === "todos" || item.category === filter
+                      ? "gallery-item"
+                      : "gallery-item hidden"
+                  }
+                  key={item.id}
+                >
+                  <img src={item.imageUrl} alt={item.alt} loading="lazy" />
+                  <span className="gallery-tag">{item.categoryLabel}</span>
+                  <span className="gallery-label">{item.label}</span>
+                  <span className="gallery-zoom"><svg><use href="#i-search" /></svg></span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

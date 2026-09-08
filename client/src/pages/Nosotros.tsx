@@ -61,7 +61,7 @@ export default function Nosotros() {
             <span className="eyebrow" style={{ justifyContent: "center" }}><svg><use href="#i-sparkle" /></svg>Nuestra historia en números</span>
             <h2 style={{ color: "#fff" }}>25 años construyendo confianza</h2>
           </div>
-          <div className="why-items" style={{ gridTemplateColumns: "repeat(4,1fr)", textAlign: "center" }}>
+          <div className="stats-grid" style={{ textAlign: "center" }}>
             {STATS.map((s) => (
               <div className="why-item" key={s.title}>
                 <div className="why-icon" style={{ margin: "0 auto 12px" }}><svg><use href={`#${s.icon}`} /></svg></div>
@@ -79,7 +79,7 @@ export default function Nosotros() {
             <span className="eyebrow on-light"><svg><use href="#i-sparkle" /></svg>Valores de marca</span>
             <h2>Lo que nos mueve</h2>
           </div>
-          <div className="services-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
+          <div className="values-grid">
             {VALUES.map((v) => (
               <div className="service-card" style={{ padding: 0 }} key={v.title}>
                 <div className="service-body" style={{ padding: "26px" }}>

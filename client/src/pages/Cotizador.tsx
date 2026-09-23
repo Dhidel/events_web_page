@@ -1,23 +1,31 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
-import { ACTS } from "../data/acts";
 import { EVENT_TYPES } from "../data/eventTypes";
 import { isNameValid, isPhoneValid, isEmailValid } from "../lib/validators";
-import { submitCotizacion } from "../lib/api";
-
-const SELECTABLE_ACTS = ACTS.filter((act) => act.price !== null);
+import { fetchServicios, submitCotizacion, type Servicio } from "../lib/api";
 
 type ContactField = "name" | "phone" | "email";
 type ContactState = Record<ContactField, string>;
 
 export default function Cotizador() {
-  const [quantities, setQuantities] = useState<Record<string, number>>(() =>
-    Object.fromEntries(SELECTABLE_ACTS.map((act) => [act.id, 0]))
-  );
+  // Personajes/actos con precio, servidos desde /api/servicios (MongoDB).
+  const [servicios, setServicios] = useState<Servicio[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  // Cantidad por id de servicio; un id ausente equivale a 0.
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [contact, setContact] = useState<ContactState>({ name: "", phone: "", email: "" });
   const [contactErrors, setContactErrors] = useState<ContactState>({ name: "", phone: "", email: "" });
   const [eventType, setEventType] = useState(EVENT_TYPES[0]);
+
+  useEffect(() => {
+    fetchServicios()
+      .then((data) => {
+        setServicios(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }, []);
 
   const changeQty = (id: string, delta: number) => {
     setQuantities((prev) => ({
@@ -27,7 +35,7 @@ export default function Cotizador() {
   };
 
   const resetQuoter = () => {
-    setQuantities(Object.fromEntries(SELECTABLE_ACTS.map((act) => [act.id, 0])));
+    setQuantities({});
     setContact({ name: "", phone: "", email: "" });
     setContactErrors({ name: "", phone: "", email: "" });
     setEventType(EVENT_TYPES[0]);
@@ -47,13 +55,13 @@ export default function Cotizador() {
     let total = 0;
     let totalQty = 0;
     const lines: { id: string; name: string; qty: number; subtotal: number }[] = [];
-    for (const act of SELECTABLE_ACTS) {
-      const qty = quantities[act.id] ?? 0;
-      if (qty > 0 && act.price !== null) {
-        const subtotal = qty * act.price;
+    for (const servicio of servicios) {
+      const qty = quantities[servicio.id] ?? 0;
+      if (qty > 0) {
+        const subtotal = qty * servicio.precio;
         total += subtotal;
         totalQty += qty;
-        lines.push({ id: act.id, name: act.name, qty, subtotal });
+        lines.push({ id: servicio.id, name: servicio.nombre, qty, subtotal });
       }
     }
     const waMessage =
@@ -61,7 +69,7 @@ export default function Cotizador() {
       lines.map((l) => `${l.qty}x ${l.name} (Q${l.subtotal.toLocaleString("es-GT")})`).join("\n") +
       `\nTotal estimado: Q${total.toLocaleString("es-GT")}`;
     return { total, totalQty, lines, waMessage };
-  }, [quantities]);
+  }, [servicios, quantities]);
 
   const hasSelection = totalQty > 0;
   const waHref = `https://wa.me/50230738716?text=${encodeURIComponent(waMessage)}`;
@@ -122,42 +130,48 @@ export default function Cotizador() {
                 Precios reales por personaje, 1 hora de animación, dentro de la Ciudad Capital.
               </p>
 
-              <div className="acts-selector">
-                {SELECTABLE_ACTS.map((act) => (
-                  <div className="act-row" key={act.id}>
-                    <div className="act-row-info">
-                      <h4>{act.name}</h4>
-                      <span>
-                        {act.includes} · 1 hora · <strong>Q{act.price!.toLocaleString("es-GT")}</strong> c/u
-                      </span>
+              {status === "loading" && <p className="gallery-empty">Cargando servicios…</p>}
+              {status === "error" && (
+                <p className="gallery-empty">No se pudieron cargar los servicios, intenta de nuevo.</p>
+              )}
+              {status === "ready" && (
+                <div className="acts-selector">
+                  {servicios.map((servicio) => (
+                    <div className="act-row" key={servicio.id}>
+                      <div className="act-row-info">
+                        <h4>{servicio.nombre}</h4>
+                        <span>
+                          {servicio.descripcion} · 1 hora · <strong>Q{servicio.precio.toLocaleString("es-GT")}</strong> c/u
+                        </span>
+                      </div>
+                      <div className="act-row-qty">
+                        <button
+                          type="button"
+                          className="qty-btn qty-minus"
+                          onClick={() => changeQty(servicio.id, -1)}
+                        >
+                          –
+                        </button>
+                        <input
+                          type="number"
+                          className="qty-input"
+                          value={quantities[servicio.id] ?? 0}
+                          min={0}
+                          max={20}
+                          readOnly
+                        />
+                        <button
+                          type="button"
+                          className="qty-btn qty-plus"
+                          onClick={() => changeQty(servicio.id, 1)}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                    <div className="act-row-qty">
-                      <button
-                        type="button"
-                        className="qty-btn qty-minus"
-                        onClick={() => changeQty(act.id, -1)}
-                      >
-                        –
-                      </button>
-                      <input
-                        type="number"
-                        className="qty-input"
-                        value={quantities[act.id] ?? 0}
-                        min={0}
-                        max={20}
-                        readOnly
-                      />
-                      <button
-                        type="button"
-                        className="qty-btn qty-plus"
-                        onClick={() => changeQty(act.id, 1)}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               <p style={{ fontSize: "12px", color: "var(--muted)", marginTop: "16px", lineHeight: 1.6 }}>
                 ¿Buscas Batucadas Temáticas (Brasileña, Dominicana, Chapina, Colombiana)? Tienen precio variable —{" "}

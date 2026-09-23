@@ -47,8 +47,9 @@ const galleryImageSchema = new Schema<GalleryImageAttrs, GalleryImageModel>(
   { timestamps: true }
 );
 
-// `virtuals: true` incluye el getter `id` (string de _id) que espera el frontend.
-galleryImageSchema.set("toJSON", { virtuals: true, versionKey: false });
+// `virtuals: true` incluye el getter `id` (string de _id) que espera el frontend;
+// `flattenObjectIds` deja `_id` como string (así coincide con los esquemas de /swagger).
+galleryImageSchema.set("toJSON", { virtuals: true, versionKey: false, flattenObjectIds: true });
 
 export const GalleryImage = model<GalleryImageAttrs, GalleryImageModel>(
   "GalleryImage",

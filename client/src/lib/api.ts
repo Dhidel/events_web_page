@@ -43,6 +43,27 @@ export async function fetchGallery(): Promise<GalleryImage[]> {
   return res.json();
 }
 
+export interface Servicio {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  categoria: string;
+  precio: number;
+  unidad: string;
+  activo: boolean;
+  orden: number;
+}
+
+// Catálogo público de personajes/actos (Servicios y Cotizador). Un catálogo vacío
+// se trata como error: las páginas no tienen nada útil que mostrar sin él.
+export async function fetchServicios(): Promise<Servicio[]> {
+  const res = await fetch(`${API_BASE}/api/servicios`);
+  if (!res.ok) throw new Error("No se pudieron cargar los servicios.");
+  const data = (await res.json()) as Servicio[];
+  if (!Array.isArray(data) || data.length === 0) throw new Error("El catálogo de servicios está vacío.");
+  return data;
+}
+
 export interface CotizacionPayload {
   nombre: string;
   telefono: string;

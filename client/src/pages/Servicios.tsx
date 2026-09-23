@@ -1,10 +1,19 @@
+import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import corporativo from "../assets/img/corporativo.jpg";
 import quinceVivo from "../assets/img/quince-vivo.jpg";
 import bodasColor from "../assets/img/bodas-anillos-color.jpg";
 import navidad from "../assets/img/navidad.jpg";
 import espectaculosRobots from "../assets/img/espectaculos-robots.jpg";
-import { ACTS } from "../data/acts";
+import { fetchServicios, type Servicio } from "../lib/api";
+
+// No está en /api/servicios porque no tiene precio fijo (el modelo exige precio).
+// Se muestra como tarjeta fija justo después de las batucadas del catálogo.
+const BATUCADAS_TEMATICAS = {
+  nombre: "Batucadas Temáticas",
+  descripcion: "Brasileña, Dominicana, Chapina, Colombiana",
+  note: "Diferentes precios según temática — cotiza por WhatsApp",
+};
 
 const DETAILS = [
   {
@@ -94,6 +103,24 @@ function waLink(name: string, price: number | null) {
 }
 
 export default function Servicios() {
+  // El catálogo con precios se sirve desde /api/servicios (MongoDB).
+  const [servicios, setServicios] = useState<Servicio[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    fetchServicios()
+      .then((data) => {
+        setServicios(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }, []);
+
+  // La tarjeta de temáticas va después de la última batucada. Si no hay batucadas
+  // (p. ej. todas desactivadas), va después del primer servicio para no desaparecer.
+  const batucadaIdx = servicios.findLastIndex((s) => s.categoria === "Batucadas");
+  const lastBatucadaIndex = batucadaIdx === -1 ? 0 : batucadaIdx;
+
   return (
     <>
       <section className="page-banner">
@@ -159,37 +186,45 @@ export default function Servicios() {
               estimado inmediato, o escríbenos y te armamos una propuesta a la medida.
             </p>
           </div>
-          <div className="acts-grid">
-            {ACTS.map((act) => (
-              <div className="act-card" key={act.id}>
-                <h4>{act.name}</h4>
-                {act.price !== null ? (
-                  <span className="act-includes"><strong>Incluye:</strong> {act.includes}</span>
-                ) : (
-                  <>
-                    <span className="act-includes">{act.includes}</span>
-                    <span className="act-note">{act.note}</span>
-                  </>
-                )}
-                <div className="act-meta">
-                  {act.price !== null ? (
-                    <>
+          {status === "loading" && <p className="gallery-empty">Cargando servicios…</p>}
+          {status === "error" && (
+            <p className="gallery-empty">No se pudieron cargar los servicios, intenta de nuevo.</p>
+          )}
+          {status === "ready" && (
+            <div className="acts-grid">
+              {servicios.map((s, i) => (
+                <Fragment key={s.id}>
+                  <div className="act-card">
+                    <h4>{s.nombre}</h4>
+                    <span className="act-includes"><strong>Incluye:</strong> {s.descripcion}</span>
+                    <div className="act-meta">
                       <div className="act-price">
-                        Q{act.price.toLocaleString("es-GT")}
+                        Q{s.precio.toLocaleString("es-GT")}
                         <small>Costo por personaje</small>
                       </div>
                       <div className="act-duration">Duración<br />1 hora</div>
-                    </>
-                  ) : (
-                    <div className="act-price" style={{ fontSize: "14px", color: "var(--muted)" }}>Precio variable</div>
+                    </div>
+                    <a href={waLink(s.nombre, s.precio)} target="_blank" rel="noreferrer" className="btn btn-primary">
+                      <svg><use href="#i-whatsapp" /></svg>Cotizar
+                    </a>
+                  </div>
+                  {i === lastBatucadaIndex && (
+                    <div className="act-card">
+                      <h4>{BATUCADAS_TEMATICAS.nombre}</h4>
+                      <span className="act-includes">{BATUCADAS_TEMATICAS.descripcion}</span>
+                      <span className="act-note">{BATUCADAS_TEMATICAS.note}</span>
+                      <div className="act-meta">
+                        <div className="act-price" style={{ fontSize: "14px", color: "var(--muted)" }}>Precio variable</div>
+                      </div>
+                      <a href={waLink(BATUCADAS_TEMATICAS.nombre, null)} target="_blank" rel="noreferrer" className="btn btn-primary">
+                        <svg><use href="#i-whatsapp" /></svg>Cotizar
+                      </a>
+                    </div>
                   )}
-                </div>
-                <a href={waLink(act.name, act.price)} target="_blank" rel="noreferrer" className="btn btn-primary">
-                  <svg><use href="#i-whatsapp" /></svg>Cotizar
-                </a>
-              </div>
-            ))}
-          </div>
+                </Fragment>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

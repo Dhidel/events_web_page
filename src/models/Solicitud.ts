@@ -36,7 +36,8 @@ const solicitudSchema = new Schema<SolicitudAttrs, SolicitudModel>(
   { timestamps: true }
 );
 
-// `virtuals: true` incluye el getter `id` (string de _id) que espera el frontend.
-solicitudSchema.set("toJSON", { virtuals: true, versionKey: false });
+// `virtuals: true` incluye el getter `id` (string de _id) que espera el frontend;
+// `flattenObjectIds` deja `_id` como string (así coincide con los esquemas de /swagger).
+solicitudSchema.set("toJSON", { virtuals: true, versionKey: false, flattenObjectIds: true });
 
 export const Solicitud = model<SolicitudAttrs, SolicitudModel>("Solicitud", solicitudSchema);

@@ -10,6 +10,7 @@ import {
   type Solicitud,
   type SolicitudEstado,
 } from "../lib/api";
+import { maskEmail, maskPhone } from "../lib/privacy";
 
 const ESTADOS: { value: SolicitudEstado; label: string; key: string }[] = [
   { value: "nuevo", label: "Nuevo", key: "nuevo" },
@@ -33,6 +34,17 @@ export default function AdminCotizaciones() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<SolicitudEstado | "">("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  // Filas con correo/teléfono visibles. Por defecto todo va enmascarado para que
+  // los datos no queden expuestos en pantalla (capturas, alguien mirando, etc.).
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+
+  const toggleReveal = (id: string) =>
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const handleAuthError = useCallback(() => {
     clearAdminToken();
@@ -180,13 +192,20 @@ export default function AdminCotizaciones() {
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item) => (
+              {filteredItems.map((item) => {
+                const isRevealed = revealed.has(item.id);
+                return (
                 <tr key={item.id}>
                   <td>
                     <div className="cotiz-name">{item.nombre}</div>
-                    <div className="cotiz-email">{item.correo}</div>
+                    <div className="cotiz-email">{isRevealed ? item.correo : maskEmail(item.correo)}</div>
                   </td>
-                  <td>{item.telefono}</td>
+                  <td>
+                    {isRevealed ? item.telefono : maskPhone(item.telefono)}
+                    <button type="button" className="cotiz-reveal" onClick={() => toggleReveal(item.id)}>
+                      {isRevealed ? "Ocultar" : "Ver"}
+                    </button>
+                  </td>
                   <td>{item.tipoEvento || "—"}</td>
                   <td>{ORIGEN_LABEL[item.origen]}</td>
                   <td>
@@ -216,7 +235,8 @@ export default function AdminCotizaciones() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

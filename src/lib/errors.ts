@@ -1,4 +1,5 @@
 import { Elysia, type ValidationError } from "elysia";
+import { safeErrorLog } from "./privacy";
 
 // Formato único de error de toda la API: { error: "mensaje para el usuario" }.
 // Este plugin es el único onError del servidor; se registra una vez en index.ts
@@ -54,7 +55,8 @@ export const errorHandler = new Elysia({ name: "error-handler" }).onError(
     }
 
     // Inesperado: el detalle queda solo en el log del servidor, nunca en la respuesta.
-    console.error(`[${request.method} ${path}] Error inesperado:`, error);
+    // Se loguea enmascarado: los errores de Mongo pueden traer correos/teléfonos del documento.
+    console.error(`[${request.method} ${path}] Error inesperado: ${safeErrorLog(error)}`);
     set.status = 500;
     return { error: GENERIC_ERROR };
   }

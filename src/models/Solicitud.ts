@@ -40,4 +40,7 @@ const solicitudSchema = new Schema<SolicitudAttrs, SolicitudModel>(
 // `flattenObjectIds` deja `_id` como string (así coincide con los esquemas de /swagger).
 solicitudSchema.set("toJSON", { virtuals: true, versionKey: false, flattenObjectIds: true });
 
+solicitudSchema.index({ createdAt: -1 });
+solicitudSchema.index({ estado: 1, createdAt: -1 });
+
 export const Solicitud = model<SolicitudAttrs, SolicitudModel>("Solicitud", solicitudSchema);

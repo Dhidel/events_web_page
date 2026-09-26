@@ -1,19 +1,18 @@
 import { Elysia, t } from "elysia";
 import { adminGuard } from "../middleware/adminGuard";
-import { Solicitud, SOLICITUD_ESTADOS } from "../models/Solicitud";
+import { SOLICITUD_ESTADOS, type SolicitudEstado } from "../models/Solicitud";
 import { adminDetail, errorResponses, IdParams, SolicitudSchema, toApi } from "../lib/apiSchemas";
 import { ApiError } from "../lib/errors";
+import { listarSolicitudes, actualizarEstadoSolicitud } from "../services/solicitud.service";
 
 const estadoSchema = t.Union(SOLICITUD_ESTADOS.map((value) => t.Literal(value)));
 
-// Todas las rutas pasan por adminGuard (requiere JWT válido en Authorization: Bearer).
 export const adminCotizacionesRoutes = new Elysia({ prefix: "/api/admin/cotizaciones" })
   .use(adminGuard)
   .get(
     "/",
     async ({ query }) => {
-      const filter = query.estado ? { estado: query.estado } : {};
-      const items = await Solicitud.find(filter).sort({ createdAt: -1 });
+      const items = await listarSolicitudes(query.estado as SolicitudEstado | undefined);
       return items.map((item) => toApi(SolicitudSchema, item));
     },
     {
@@ -32,11 +31,9 @@ export const adminCotizacionesRoutes = new Elysia({ prefix: "/api/admin/cotizaci
   .patch(
     "/:id",
     async ({ params, body }) => {
-      const doc = await Solicitud.findById(params.id);
+      const doc = await actualizarEstadoSolicitud(params.id, body.estado as SolicitudEstado);
       if (!doc) throw new ApiError(404, "Solicitud no encontrada.");
 
-      doc.estado = body.estado;
-      await doc.save();
       return toApi(SolicitudSchema, doc);
     },
     {

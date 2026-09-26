@@ -1,9 +1,16 @@
 import { Elysia, t } from "elysia";
 import { adminGuard } from "../middleware/adminGuard";
-import { GalleryImage, GALLERY_CATEGORIES, CATEGORY_LABELS } from "../models/GalleryImage";
+import { GALLERY_CATEGORIES, type GalleryCategory } from "../models/GalleryImage";
 import { uploadImage, deleteImage } from "../lib/cloudinary";
 import { adminDetail, errorResponses, GalleryImageSchema, IdParams, toApi } from "../lib/apiSchemas";
 import { ApiError } from "../lib/errors";
+import {
+  listarImagenesGaleria,
+  crearImagenGaleria,
+  obtenerImagenPorId,
+  actualizarImagenGaleria,
+  eliminarImagenGaleria,
+} from "../services/gallery.service";
 
 const categorySchema = t.Union(GALLERY_CATEGORIES.map((value) => t.Literal(value)));
 const imageSchema = t.File({ type: "image", maxSize: "10m" });
@@ -25,7 +32,7 @@ export const adminGalleryRoutes = new Elysia({ prefix: "/api/admin/gallery" })
   .get(
     "/",
     async () => {
-      const items = await GalleryImage.find().sort({ order: 1, createdAt: 1 });
+      const items = await listarImagenesGaleria();
       return items.map((item) => toApi(GalleryImageSchema, item));
     },
     {
@@ -42,14 +49,13 @@ export const adminGalleryRoutes = new Elysia({ prefix: "/api/admin/gallery" })
     async ({ body, set }) => {
       const { url, publicId } = await upload(body.image);
 
-      const doc = await GalleryImage.create({
+      const doc = await crearImagenGaleria({
         imageUrl: url,
         publicId,
         alt: body.alt,
         label: body.label,
-        category: body.category,
-        categoryLabel: CATEGORY_LABELS[body.category],
-        order: body.order ?? 0,
+        category: body.category as GalleryCategory,
+        order: body.order,
       });
 
       set.status = 201;
@@ -77,30 +83,34 @@ export const adminGalleryRoutes = new Elysia({ prefix: "/api/admin/gallery" })
   .put(
     "/:id",
     async ({ params, body }) => {
-      const doc = await GalleryImage.findById(params.id);
-      if (!doc) throw new ApiError(404, "Imagen no encontrada.");
+      const docExistente = await obtenerImagenPorId(params.id);
+      if (!docExistente) throw new ApiError(404, "Imagen no encontrada.");
+
+      let newImageUrl: string | undefined;
+      let newPublicId: string | undefined;
 
       if (body.image) {
-        const previousPublicId = doc.publicId;
-        const { url, publicId } = await upload(body.image);
-        doc.imageUrl = url;
-        doc.publicId = publicId;
+        const previousPublicId = docExistente.publicId;
+        const uploaded = await upload(body.image);
+        newImageUrl = uploaded.url;
+        newPublicId = uploaded.publicId;
+
         // Se borra la anterior después de subir la nueva; si falla, no rompe la operación.
         deleteImage(previousPublicId).catch((error) =>
           console.error("Cloudinary: no se pudo borrar la imagen anterior:", error)
         );
       }
 
-      if (body.alt !== undefined) doc.alt = body.alt;
-      if (body.label !== undefined) doc.label = body.label;
-      if (body.category !== undefined) {
-        doc.category = body.category;
-        doc.categoryLabel = CATEGORY_LABELS[body.category];
-      }
-      if (body.order !== undefined) doc.order = body.order;
+      const doc = await actualizarImagenGaleria(params.id, {
+        imageUrl: newImageUrl,
+        publicId: newPublicId,
+        alt: body.alt,
+        label: body.label,
+        category: body.category as GalleryCategory | undefined,
+        order: body.order,
+      });
 
-      await doc.save();
-      return toApi(GalleryImageSchema, doc);
+      return toApi(GalleryImageSchema, doc!);
     },
     {
       params: IdParams,
@@ -125,15 +135,15 @@ export const adminGalleryRoutes = new Elysia({ prefix: "/api/admin/gallery" })
   .delete(
     "/:id",
     async ({ params }) => {
-    const doc = await GalleryImage.findById(params.id);
-    if (!doc) throw new ApiError(404, "Imagen no encontrada.");
+      const doc = await obtenerImagenPorId(params.id);
+      if (!doc) throw new ApiError(404, "Imagen no encontrada.");
 
-    await deleteImage(doc.publicId).catch((error) =>
-      console.error("Cloudinary: no se pudo borrar la imagen:", error)
-    );
-    await doc.deleteOne();
+      await deleteImage(doc.publicId).catch((error) =>
+        console.error("Cloudinary: no se pudo borrar la imagen:", error)
+      );
+      await eliminarImagenGaleria(params.id);
 
-    return { ok: true };
+      return { ok: true };
     },
     {
       params: IdParams,

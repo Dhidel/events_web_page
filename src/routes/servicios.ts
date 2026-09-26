@@ -1,16 +1,13 @@
 import { Elysia, t } from "elysia";
-import { Servicio } from "../models/Servicio";
 import { errorResponses, ServicioSchema, toApi } from "../lib/apiSchemas";
+import { listarServiciosActivos } from "../services/servicios.service";
 
 // Endpoint público: el catálogo de Servicios y el Cotizador consumen esto.
 // Solo devuelve servicios activos; ?categoria=Batucadas filtra por categoría.
 export const serviciosRoutes = new Elysia().get(
   "/api/servicios",
   async ({ query }) => {
-    const filtro: Record<string, unknown> = { activo: true };
-    if (query.categoria) filtro.categoria = query.categoria;
-
-    const items = await Servicio.find(filtro).sort({ orden: 1, createdAt: 1 });
+    const items = await listarServiciosActivos(query.categoria);
     return items.map((item) => toApi(ServicioSchema, item));
   },
   {

@@ -1,12 +1,12 @@
 import { Elysia, t } from "elysia";
-import { GalleryImage } from "../models/GalleryImage";
 import { errorResponses, GalleryImageSchema, toApi } from "../lib/apiSchemas";
+import { listarImagenesGaleria } from "../services/gallery.service";
 
 // Endpoint público: la página /galeria del sitio consume esto.
 export const galleryRoutes = new Elysia().get(
   "/api/gallery",
   async () => {
-    const items = await GalleryImage.find().sort({ order: 1, createdAt: 1 });
+    const items = await listarImagenesGaleria();
     return items.map((item) => toApi(GalleryImageSchema, item));
   },
   {

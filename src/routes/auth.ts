@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { authJwt } from "../plugins/jwt";
-import { AdminUser } from "../models/AdminUser";
 import { ErrorSchemas, errorResponses } from "../lib/apiSchemas";
+import { validarCredencialesAdmin } from "../services/auth.service";
 
 const GENERIC_LOGIN_ERROR = "Correo o contraseña incorrectos.";
 
@@ -10,10 +10,9 @@ export const authRoutes = new Elysia().use(authJwt).post(
   async ({ body, jwt, set }) => {
     const email = body.email.trim().toLowerCase();
 
-    const user = await AdminUser.findOne({ email }).select("+password");
-    const isValid = user ? await user.comparePassword(body.password) : false;
+    const user = await validarCredencialesAdmin(email, body.password);
 
-    if (!user || !isValid) {
+    if (!user) {
       set.status = 401;
       return { error: GENERIC_LOGIN_ERROR };
     }

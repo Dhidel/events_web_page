@@ -7,6 +7,7 @@ export interface CrearSolicitudInput {
   correo: string;
   tipoEvento?: string;
   mensaje?: string;
+  fechaEvento?: string;
   origen: SolicitudAttrs["origen"];
   detalleCotizador?: Record<string, unknown>;
 }
@@ -19,6 +20,8 @@ export async function crearSolicitud(data: CrearSolicitudInput) {
     correo: sanitizeText(data.correo).toLowerCase(),
     tipoEvento: data.tipoEvento ? sanitizeText(data.tipoEvento) : undefined,
     mensaje: data.mensaje ? sanitizeText(data.mensaje) : undefined,
+    // Ya viene validada como fecha "YYYY-MM-DD" (ruta y modelo): no lleva texto libre.
+    fechaEvento: data.fechaEvento || undefined,
     origen: data.origen,
     detalleCotizador: data.detalleCotizador ? sanitizeInput(data.detalleCotizador) : undefined,
   };

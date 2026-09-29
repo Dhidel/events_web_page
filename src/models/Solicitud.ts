@@ -12,9 +12,13 @@ export interface SolicitudAttrs {
   correo: string;
   tipoEvento?: string;
   mensaje?: string;
+  // Fecha estimada del evento (formulario de Contacto), "YYYY-MM-DD". Se guarda como texto
+  // y no como Date: es un día del calendario, no un instante, y así no cambia con la zona horaria.
+  fechaEvento?: string;
   origen: SolicitudOrigen;
-  // Objeto libre con lo seleccionado en el cotizador (personajes, cantidades, estimado)
-  // cuando origen = "cotizador". Sin forma fija porque el catálogo de actos cambia.
+  // Lo seleccionado en el cotizador cuando origen = "cotizador". Lo arma el servidor con
+  // los precios de MongoDB (ver services/cotizador.service.ts); nunca se guarda tal cual
+  // lo manda el cliente.
   detalleCotizador?: Record<string, unknown>;
   estado: SolicitudEstado;
 }
@@ -29,6 +33,7 @@ const solicitudSchema = new Schema<SolicitudAttrs, SolicitudModel>(
     correo: { type: String, required: true, trim: true, lowercase: true },
     tipoEvento: { type: String, trim: true },
     mensaje: { type: String, trim: true },
+    fechaEvento: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
     origen: { type: String, required: true, enum: SOLICITUD_ORIGENES },
     detalleCotizador: { type: Schema.Types.Mixed },
     estado: { type: String, required: true, enum: SOLICITUD_ESTADOS, default: "nuevo" },

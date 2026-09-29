@@ -114,10 +114,12 @@ export const SolicitudSchema = t.Object(
     correo: t.String(),
     tipoEvento: t.Optional(t.String()),
     mensaje: t.Optional(t.String()),
+    fechaEvento: t.Optional(t.String({ description: 'Fecha estimada del evento, "YYYY-MM-DD".' })),
     origen: literals(SOLICITUD_ORIGENES),
     detalleCotizador: t.Optional(
       t.Record(t.String(), t.Unknown(), {
-        description: "Lo seleccionado en el cotizador (personajes, cantidades, total). Solo cuando origen = cotizador.",
+        description:
+          "Lo seleccionado en el cotizador (personajes con precio unitario y subtotal, y total), calculado por el servidor con los precios de MongoDB. Solo cuando origen = cotizador.",
       })
     ),
     estado: literals(SOLICITUD_ESTADOS),
@@ -135,7 +137,15 @@ export const SolicitudSchema = t.Object(
         tipoEvento: "Quinceaños",
         origen: "cotizador",
         detalleCotizador: {
-          personajes: [{ nombre: "Batucada Hora Loca — 3 Tamboreros", cantidad: 2, subtotal: 7600 }],
+          personajes: [
+            {
+              servicioId: "6ab45b6121f69b5836d36221",
+              nombre: "Batucada Hora Loca — 3 Tamboreros",
+              cantidad: 2,
+              precioUnitario: 3800,
+              subtotal: 7600,
+            },
+          ],
           total: 7600,
         },
         estado: "nuevo",

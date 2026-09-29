@@ -22,6 +22,7 @@ export interface Solicitud {
   correo: string;
   tipoEvento?: string;
   mensaje?: string;
+  fechaEvento?: string;
   origen: SolicitudOrigen;
   detalleCotizador?: Record<string, unknown>;
   estado: SolicitudEstado;
@@ -70,6 +71,7 @@ export interface CotizacionPayload {
   correo: string;
   tipoEvento?: string;
   mensaje?: string;
+  fechaEvento?: string;
   origen: SolicitudOrigen;
   detalleCotizador?: Record<string, unknown>;
 }
@@ -108,11 +110,12 @@ export async function adminFetch(path: string, init: RequestInit = {}): Promise<
 }
 
 // Endpoint público que usan el formulario de Contacto y el Cotizador al confirmar.
-export async function submitCotizacion(payload: CotizacionPayload): Promise<Solicitud> {
+export async function submitCotizacion(payload: CotizacionPayload, signal?: AbortSignal): Promise<Solicitud> {
   const res = await fetch(`${API_BASE}/api/cotizaciones`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    signal,
   });
   if (!res.ok) throw new Error(await readError(res, "No se pudo enviar la solicitud."));
   return res.json();

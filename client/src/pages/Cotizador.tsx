@@ -1,12 +1,23 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
 import { EVENT_TYPES } from "../data/eventTypes";
 import { isNameValid, isPhoneValid, isEmailValid } from "../lib/validators";
 import { fetchServicios, submitCotizacion, type Servicio } from "../lib/api";
+import { guardarYAbrirWhatsApp } from "../lib/whatsapp";
 
 type ContactField = "name" | "phone" | "email";
 type ContactState = Record<ContactField, string>;
+
+// Estado del guardado al confirmar. WhatsApp solo se abre si la cotización quedó guardada.
+type Confirmacion =
+  | { estado: "inicial" }
+  | { estado: "guardando" }
+  | { estado: "guardada"; whatsappAbierto: boolean }
+  | { estado: "error"; mensaje: string };
+
+// Si el backend no responde en este tiempo se trata como error (y se ofrece reintentar).
+const SAVE_TIMEOUT_MS = 15_000;
 
 export default function Cotizador() {
   // Personajes/actos con precio, servidos desde /api/servicios (MongoDB).
@@ -17,6 +28,9 @@ export default function Cotizador() {
   const [contact, setContact] = useState<ContactState>({ name: "", phone: "", email: "" });
   const [contactErrors, setContactErrors] = useState<ContactState>({ name: "", phone: "", email: "" });
   const [eventType, setEventType] = useState(EVENT_TYPES[0]);
+  const [confirmacion, setConfirmacion] = useState<Confirmacion>({ estado: "inicial" });
+  // Freno síncrono contra doble clic: el estado de React se actualiza después del clic.
+  const guardandoRef = useRef(false);
 
   useEffect(() => {
     fetchServicios()
@@ -32,6 +46,8 @@ export default function Cotizador() {
       ...prev,
       [id]: Math.min(20, Math.max(0, (prev[id] ?? 0) + delta)),
     }));
+    // Una selección nueva es otra cotización: se puede volver a confirmar.
+    setConfirmacion({ estado: "inicial" });
   };
 
   const resetQuoter = () => {
@@ -39,6 +55,7 @@ export default function Cotizador() {
     setContact({ name: "", phone: "", email: "" });
     setContactErrors({ name: "", phone: "", email: "" });
     setEventType(EVENT_TYPES[0]);
+    setConfirmacion({ estado: "inicial" });
   };
 
   const updateContact = (field: ContactField, value: string) => {
@@ -74,35 +91,51 @@ export default function Cotizador() {
   const hasSelection = totalQty > 0;
   const waHref = `https://wa.me/50230738716?text=${encodeURIComponent(waMessage)}`;
 
-  const handleConfirm = (e: MouseEvent<HTMLAnchorElement>) => {
+  // Se usa tanto en "Confirmar" como en "Reintentar". Tiene que llamarse directo desde el
+  // clic: guardarYAbrirWhatsApp abre la pestaña de WhatsApp antes de esperar al servidor.
+  const handleConfirm = async () => {
+    if (guardandoRef.current) return;
+
     const nextErrors: ContactState = {
       name: isNameValid(contact.name) ? "" : "Ingresa tu nombre.",
       phone: isPhoneValid(contact.phone) ? "" : "Ingresa un teléfono válido.",
       email: isEmailValid(contact.email) ? "" : "Ingresa un correo válido.",
     };
     setContactErrors(nextErrors);
+    if (nextErrors.name || nextErrors.phone || nextErrors.email) return;
 
-    if (nextErrors.name || nextErrors.phone || nextErrors.email) {
-      e.preventDefault();
-      return;
-    }
+    guardandoRef.current = true;
+    setConfirmacion({ estado: "guardando" });
 
-    // No se espera esta llamada ni se hace preventDefault: WhatsApp debe abrirse
-    // de inmediato sin importar si el guardado en el backend falla o tarda.
-    submitCotizacion({
-      nombre: contact.name.trim(),
-      telefono: contact.phone.trim(),
-      correo: contact.email.trim(),
-      tipoEvento: eventType !== EVENT_TYPES[0] ? eventType : undefined,
-      origen: "cotizador",
-      detalleCotizador: {
-        personajes: lines.map((l) => ({ nombre: l.name, cantidad: l.qty, subtotal: l.subtotal })),
-        total,
-      },
-    }).catch((error) => {
-      console.error("No se pudo guardar la solicitud del cotizador en el backend:", error);
+    const resultado = await guardarYAbrirWhatsApp({
+      waHref,
+      guardar: () =>
+        submitCotizacion(
+          {
+            nombre: contact.name.trim(),
+            telefono: contact.phone.trim(),
+            correo: contact.email.trim(),
+            tipoEvento: eventType !== EVENT_TYPES[0] ? eventType : undefined,
+            origen: "cotizador",
+            // El servidor recalcula nombres, subtotales y total con los precios de MongoDB.
+            detalleCotizador: {
+              personajes: lines.map((l) => ({ servicioId: l.id, nombre: l.name, cantidad: l.qty, subtotal: l.subtotal })),
+              total,
+            },
+          },
+          AbortSignal.timeout(SAVE_TIMEOUT_MS)
+        ),
     });
+
+    guardandoRef.current = false;
+    setConfirmacion(
+      resultado.ok
+        ? { estado: "guardada", whatsappAbierto: resultado.whatsappAbierto }
+        : { estado: "error", mensaje: resultado.error }
+    );
   };
+
+  const guardando = confirmacion.estado === "guardando";
 
   return (
     <>
@@ -248,17 +281,66 @@ export default function Cotizador() {
                   </div>
                 )}
 
-                {hasSelection ? (
-                  <a
-                    href={waHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-primary"
-                    style={{ width: "100%", justifyContent: "center", marginTop: "16px" }}
-                    onClick={handleConfirm}
-                  >
-                    <svg><use href="#i-whatsapp" /></svg>Confirmar este estimado por WhatsApp
-                  </a>
+                {hasSelection && confirmacion.estado === "error" ? (
+                  <div className="quoter-error" role="alert">
+                    <p>
+                      <strong>No pudimos guardar tu cotización.</strong> {confirmacion.mensaje} Tu selección sigue
+                      aquí: puedes reintentar o escribirnos directo por WhatsApp.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleConfirm}
+                      style={{ width: "100%", justifyContent: "center" }}
+                    >
+                      Reintentar
+                    </button>
+                    <a
+                      href={waHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-ghost"
+                      style={{ width: "100%", justifyContent: "center" }}
+                    >
+                      <svg><use href="#i-whatsapp" /></svg>Continuar por WhatsApp de todas formas
+                    </a>
+                  </div>
+                ) : hasSelection && confirmacion.estado === "guardada" && !confirmacion.whatsappAbierto ? (
+                  // Guardada, pero el navegador no dejó abrir/navegar la pestaña: el usuario la abre
+                  // con un clic directo (en vez de volver a confirmar y duplicar la solicitud).
+                  <>
+                    <p className="quoter-success" role="status">¡Listo! Guardamos tu cotización. Continúa en WhatsApp:</p>
+                    <a
+                      href={waHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-primary"
+                      style={{ width: "100%", justifyContent: "center", marginTop: "10px" }}
+                    >
+                      <svg><use href="#i-whatsapp" /></svg>Abrir WhatsApp
+                    </a>
+                  </>
+                ) : hasSelection ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ width: "100%", justifyContent: "center", marginTop: "16px" }}
+                      onClick={handleConfirm}
+                      disabled={guardando}
+                    >
+                      <svg><use href="#i-whatsapp" /></svg>
+                      {guardando ? "Guardando tu cotización…" : "Confirmar este estimado por WhatsApp"}
+                    </button>
+                    {confirmacion.estado === "guardada" && (
+                      <p className="quoter-success" role="status">
+                        ¡Listo! Guardamos tu cotización. ¿No se abrió WhatsApp?{" "}
+                        <a href={waHref} target="_blank" rel="noreferrer">
+                          Abrir WhatsApp
+                        </a>
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <>
                     <button type="button" className="btn btn-primary" disabled style={{ width: "100%", justifyContent: "center", marginTop: "26px" }}>

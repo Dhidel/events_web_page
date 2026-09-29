@@ -27,6 +27,14 @@ const ORIGEN_LABEL: Record<Solicitud["origen"], string> = {
   contacto: "Contacto",
 };
 
+// "2026-12-05" → "05 dic 2026". Se arma la fecha con año/mes/día locales: new Date("2026-12-05")
+// la tomaría como medianoche UTC y en Guatemala (UTC-6) se mostraría el día anterior.
+function formatFechaEvento(fecha: string): string {
+  const [y, m, d] = fecha.split("-").map(Number);
+  if (!y || !m || !d) return fecha;
+  return new Date(y, m - 1, d).toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 export default function AdminCotizaciones() {
   const navigate = useNavigate();
   const [items, setItems] = useState<Solicitud[]>([]);
@@ -186,8 +194,9 @@ export default function AdminCotizaciones() {
                 <th>Nombre</th>
                 <th>Teléfono</th>
                 <th>Tipo de evento</th>
+                <th>Fecha del evento</th>
                 <th>Origen</th>
-                <th>Fecha</th>
+                <th>Recibida</th>
                 <th>Estado</th>
               </tr>
             </thead>
@@ -207,6 +216,7 @@ export default function AdminCotizaciones() {
                     </button>
                   </td>
                   <td>{item.tipoEvento || "—"}</td>
+                  <td>{item.fechaEvento ? formatFechaEvento(item.fechaEvento) : "—"}</td>
                   <td>{ORIGEN_LABEL[item.origen]}</td>
                   <td>
                     {new Date(item.createdAt).toLocaleDateString("es-GT", {

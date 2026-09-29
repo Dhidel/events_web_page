@@ -11,6 +11,8 @@ const START_TIMEOUT_MS = 120_000;
 
 beforeAll(async () => {
   mongo = await MongoMemoryServer.create();
+  // Queda disponible para las pruebas que simulan una caída y necesitan reconectar.
+  process.env.TEST_MONGODB_URI = mongo.getUri();
   await mongoose.connect(mongo.getUri(), { dbName: "events_test" });
 }, START_TIMEOUT_MS);
 

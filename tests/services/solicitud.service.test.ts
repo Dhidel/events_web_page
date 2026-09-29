@@ -33,7 +33,8 @@ describe("crearSolicitud", () => {
     expect(guardada!.mensaje).toBe("Quiero cotizar batucada");
     expect(guardada!.origen).toBe("contacto");
     expect(guardada!.estado).toBe("nuevo");
-    expect(guardada!.createdAt).toBeInstanceOf(Date);
+    // timestamps: true agrega createdAt, pero SolicitudAttrs no lo declara.
+    expect((guardada as { createdAt?: unknown }).createdAt).toBeInstanceOf(Date);
   });
 
   test("pasa el correo a minúsculas", async () => {

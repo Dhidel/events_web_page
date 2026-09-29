@@ -12,6 +12,39 @@ const FILTERS: { key: string; label: string }[] = [
   { key: "espectaculos", label: "Espectáculos" },
 ];
 
+// Una foto de la galería con sus tres estados: cargando (skeleton), lista y error.
+// Si la URL falla no se ve el ícono roto del navegador sino un reemplazo con el alt.
+function GalleryPhoto({ item, hidden }: { item: GalleryImage; hidden: boolean }) {
+  const [estado, setEstado] = useState<"cargando" | "lista" | "error">("cargando");
+
+  const classes = ["gallery-item"];
+  if (estado === "cargando") classes.push("is-loading");
+  if (hidden) classes.push("hidden");
+
+  return (
+    <div className={classes.join(" ")}>
+      {estado === "error" ? (
+        <div className="gallery-fallback" role="img" aria-label={item.alt}>
+          <svg><use href="#i-masks" /></svg>
+          <span>{item.alt}</span>
+        </div>
+      ) : (
+        <img
+          className={estado === "lista" ? "gallery-photo is-loaded" : "gallery-photo"}
+          src={item.imageUrl}
+          alt={item.alt}
+          loading="lazy"
+          onLoad={() => setEstado("lista")}
+          onError={() => setEstado("error")}
+        />
+      )}
+      <span className="gallery-tag">{item.categoryLabel}</span>
+      <span className="gallery-label">{item.label}</span>
+      <span className="gallery-zoom"><svg><use href="#i-search" /></svg></span>
+    </div>
+  );
+}
+
 export default function Galeria() {
   const [filter, setFilter] = useState("todos");
   // La galería se sirve entera desde /api/gallery (la administra el panel admin).
@@ -68,19 +101,11 @@ export default function Galeria() {
           {status === "ready" && items.length > 0 && (
             <div className="gallery-grid gallery-grid-big">
               {items.map((item) => (
-                <div
-                  className={
-                    filter === "todos" || item.category === filter
-                      ? "gallery-item"
-                      : "gallery-item hidden"
-                  }
+                <GalleryPhoto
                   key={item.id}
-                >
-                  <img src={item.imageUrl} alt={item.alt} loading="lazy" />
-                  <span className="gallery-tag">{item.categoryLabel}</span>
-                  <span className="gallery-label">{item.label}</span>
-                  <span className="gallery-zoom"><svg><use href="#i-search" /></svg></span>
-                </div>
+                  item={item}
+                  hidden={filter !== "todos" && item.category !== filter}
+                />
               ))}
             </div>
           )}

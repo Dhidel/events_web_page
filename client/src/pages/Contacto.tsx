@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import aveTematico from "../assets/img/ave-tematico.jpg";
 import { EVENT_TYPES } from "../data/eventTypes";
@@ -43,6 +43,10 @@ export default function Contacto() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  // Segunda capa contra doble envío (además del botón deshabilitado). Es un ref y no el
+  // estado `submitting` porque dos clics en el mismo instante leen el mismo valor viejo
+  // del estado; el ref cambia en el acto.
+  const submittingRef = useRef(false);
 
   const updateField = (field: keyof ContactErrors, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -56,6 +60,7 @@ export default function Contacto() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
 
     const nextErrors: ContactErrors = {
       name: isNameValid(form.name) ? "" : "Por favor ingresa tu nombre.",
@@ -66,6 +71,7 @@ export default function Contacto() {
 
     if (nextErrors.name || nextErrors.phone || nextErrors.email) return;
 
+    submittingRef.current = true;
     setSubmitting(true);
     setSubmitError("");
     setSubmitSuccess(false);
@@ -77,6 +83,8 @@ export default function Contacto() {
         correo: form.email.trim(),
         mensaje: form.details.trim() || undefined,
         tipoEvento: form.eventType !== EVENT_TYPES[0] ? form.eventType : undefined,
+        // El input type="date" ya entrega "YYYY-MM-DD" (o "" si no se eligió fecha).
+        fechaEvento: form.date || undefined,
         origen: "contacto",
       });
 
@@ -85,6 +93,7 @@ export default function Contacto() {
     } catch (err) {
       setSubmitError((err as Error).message);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

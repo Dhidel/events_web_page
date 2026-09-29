@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
+    "test": "bun test",
     "create-admin": "bun run src/scripts/create-admin.ts",
     "test-login": "bun run src/scripts/test-login.ts",
     "seed-gallery": "bun run src/scripts/seed-gallery.ts",
@@ -14,7 +15,8 @@
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/bun": "latest",
-    "bun-types": "^1.4.2"
+    "bun-types": "^1.4.2",
+    "mongodb-memory-server": "^11.3.0"
   },
   "peerDependencies": {
     "typescript": "^5"

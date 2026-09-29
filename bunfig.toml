@@ -1,0 +1,5 @@
+[test]
+# Conecta Mongoose a un MongoDB en memoria antes de cualquier prueba (ver tests/setup.ts).
+preload = ["./tests/setup.ts"]
+# Solo las pruebas del backend; el cliente (client/) tiene su propio proyecto.
+root = "./tests"

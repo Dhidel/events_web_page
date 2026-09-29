@@ -39,4 +39,9 @@ const servicioSchema = new Schema<ServicioAttrs, ServicioModel>(
 // `flattenObjectIds` deja `_id` como string (así coincide con los esquemas de /swagger).
 servicioSchema.set("toJSON", { virtuals: true, versionKey: false, flattenObjectIds: true });
 
+// listarServiciosActivos(): filtra por activo (y opcionalmente categoria) y ordena por orden, createdAt.
+// Un índice por cada forma de la consulta, para que el orden también salga del índice.
+servicioSchema.index({ activo: 1, orden: 1, createdAt: 1 });
+servicioSchema.index({ activo: 1, categoria: 1, orden: 1, createdAt: 1 });
+
 export const Servicio = model<ServicioAttrs, ServicioModel>("Servicio", servicioSchema);

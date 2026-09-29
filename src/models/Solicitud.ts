@@ -40,7 +40,10 @@ const solicitudSchema = new Schema<SolicitudAttrs, SolicitudModel>(
 // `flattenObjectIds` deja `_id` como string (así coincide con los esquemas de /swagger).
 solicitudSchema.set("toJSON", { virtuals: true, versionKey: false, flattenObjectIds: true });
 
+// listarSolicitudes() sin filtro: más recientes primero.
 solicitudSchema.index({ createdAt: -1 });
+// listarSolicitudes(estado): filtra por estado y ordena por fecha. También cubre filtros
+// solo por estado (es el prefijo del índice), así que no hace falta un índice aparte en estado.
 solicitudSchema.index({ estado: 1, createdAt: -1 });
 
 export const Solicitud = model<SolicitudAttrs, SolicitudModel>("Solicitud", solicitudSchema);

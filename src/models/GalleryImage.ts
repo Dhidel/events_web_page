@@ -51,6 +51,11 @@ const galleryImageSchema = new Schema<GalleryImageAttrs, GalleryImageModel>(
 // `flattenObjectIds` deja `_id` como string (así coincide con los esquemas de /swagger).
 galleryImageSchema.set("toJSON", { virtuals: true, versionKey: false, flattenObjectIds: true });
 
+// listarImagenesGaleria() ordena toda la galería por order y, a igual orden, por fecha.
+galleryImageSchema.index({ order: 1, createdAt: 1 });
+// Para filtrar por categoría manteniendo el mismo orden (hoy el filtro se hace en el cliente).
+galleryImageSchema.index({ category: 1, order: 1, createdAt: 1 });
+
 export const GalleryImage = model<GalleryImageAttrs, GalleryImageModel>(
   "GalleryImage",
   galleryImageSchema

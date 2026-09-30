@@ -28,6 +28,7 @@
     "@elysiajs/static": "^1.4.10",
     "bcrypt": "^6.0.0",
     "elysia": "^1.4.29",
-    "mongoose": "^9.9.3"
+    "mongoose": "^9.9.3",
+    "resend": "^6.31.0"
   }
 }

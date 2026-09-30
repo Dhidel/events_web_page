@@ -1,29 +1,23 @@
-import { resend } from "../lib/resend";
+import { enviarCorreoNotificacion } from "../services/email.service";
 
-async function run() {
-  console.log("Enviando correo de prueba con Resend...");
+async function main() {
+  console.log("Probando enviarCorreoNotificacion con plantilla HTML...");
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || "onboarding@resend.dev",
-      to: [process.env.EMAIL_TO_NOTIFY || "djosorio@ufm.edu"],
-      subject: "Prueba Spike [10.1] - Show Company",
-      html: `
-        <h2>¡Integración de Resend completada!</h2>
-        <p>Este correo confirma que el backend puede enviar correos transaccionales sin exponer credenciales.</p>
-        <p><strong>Fecha y hora:</strong> ${new Date().toLocaleString()}</p>
-      `,
+    const res = await enviarCorreoNotificacion({
+      nombre: "Carlos Gómez",
+      telefono: "+502 5555-1234",
+      correo: "carlos@ejemplo.com",
+      tipoEvento: "Boda",
+      fechaEvento: "2026-12-15",
+      mensaje: "Hola, me interesa conocer la disponibilidad para un show de luces y pirotecnia fría.",
+      origen: "contacto",
     });
 
-    if (error) {
-      console.error("❌ Resend devolvió un error:", error);
-      return;
-    }
-
-    console.log(" Correo enviado con éxito:", data);
+    console.log(" Resultado:", res);
   } catch (err) {
-    console.error("❌ Excepción al intentar enviar:", err);
+    console.error(" Error en la prueba:", err);
   }
 }
 
-run();
+main();

@@ -1,5 +1,6 @@
 import { Solicitud, type SolicitudAttrs, type SolicitudEstado } from "../models/Solicitud";
 import { sanitizeText, sanitizeInput } from "../lib/sanitize";
+import { enviarCorreoNotificacion } from "./email.service";
 
 export interface CrearSolicitudInput {
   nombre: string;
@@ -13,32 +14,37 @@ export interface CrearSolicitudInput {
 }
 
 export async function crearSolicitud(data: CrearSolicitudInput) {
-  // Sanitización de todos los campos de texto
   const sanitizedData: CrearSolicitudInput = {
     nombre: sanitizeText(data.nombre),
     telefono: sanitizeText(data.telefono),
     correo: sanitizeText(data.correo).toLowerCase(),
     tipoEvento: data.tipoEvento ? sanitizeText(data.tipoEvento) : undefined,
     mensaje: data.mensaje ? sanitizeText(data.mensaje) : undefined,
-    // Ya viene validada como fecha "YYYY-MM-DD" (ruta y modelo): no lleva texto libre.
     fechaEvento: data.fechaEvento || undefined,
     origen: data.origen,
     detalleCotizador: data.detalleCotizador ? sanitizeInput(data.detalleCotizador) : undefined,
   };
 
-  return await Solicitud.create({ ...sanitizedData, estado: "nuevo" });
+  const nuevaSolicitud = await Solicitud.create({ ...sanitizedData, estado: "nuevo" });
+
+  try {
+    await enviarCorreoNotificacion(nuevaSolicitud);
+  } catch (error) {
+    console.error("⚠ No se pudo enviar el correo de notificación:", error);
+  }
+
+  return nuevaSolicitud;
 }
 
-export async function listarSolicitudes(estado?: SolicitudEstado) {
-  const filter = estado ? { estado } : {};
-  return await Solicitud.find(filter).sort({ createdAt: -1 });
+export async function listarSolicitudes(filtro?: { estado?: SolicitudEstado; origen?: SolicitudAttrs["origen"] }) {
+  const query: Record<string, unknown> = {};
+
+  if (filtro?.estado) query.estado = filtro.estado;
+  if (filtro?.origen) query.origen = filtro.origen;
+
+  return await Solicitud.find(query).sort({ createdAt: -1 });
 }
 
 export async function actualizarEstadoSolicitud(id: string, estado: SolicitudEstado) {
-  const doc = await Solicitud.findById(id);
-  if (!doc) return null;
-
-  doc.estado = estado;
-  await doc.save();
-  return doc;
+  return await Solicitud.findByIdAndUpdate(id, { estado }, { new: true });
 }

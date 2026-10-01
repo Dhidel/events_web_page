@@ -12,7 +12,7 @@ export const adminCotizacionesRoutes = new Elysia({ prefix: "/api/admin/cotizaci
   .get(
     "/",
     async ({ query }) => {
-      const items = await listarSolicitudes(query.estado as SolicitudEstado | undefined);
+      const items = await listarSolicitudes({ estado: query.estado as SolicitudEstado | undefined });
       return items.map((item) => toApi(SolicitudSchema, item));
     },
     {

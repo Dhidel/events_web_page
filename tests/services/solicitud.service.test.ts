@@ -109,13 +109,13 @@ describe("listarSolicitudes", () => {
     await crearSolicitud(datosSolicitud({ nombre: "B" }));
     await actualizarEstadoSolicitud(a.id, "contactado");
 
-    const contactadas = await listarSolicitudes("contactado");
+    const contactadas = await listarSolicitudes({ estado: "contactado" });
     expect(contactadas.map((s) => s.nombre)).toEqual(["A"]);
 
-    const nuevas = await listarSolicitudes("nuevo");
+    const nuevas = await listarSolicitudes({ estado: "nuevo" });
     expect(nuevas.map((s) => s.nombre)).toEqual(["B"]);
 
-    expect(await listarSolicitudes("confirmado")).toEqual([]);
+    expect(await listarSolicitudes({ estado: "confirmado" })).toEqual([]);
   });
 });
 

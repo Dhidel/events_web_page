@@ -1,5 +1,6 @@
-import { Solicitud, type SolicitudAttrs, type SolicitudEstado } from "../models/Solicitud";
+import { Solicitud, type SolicitudAttrs, type SolicitudDocument, type SolicitudEstado } from "../models/Solicitud";
 import { sanitizeText, sanitizeInput } from "../lib/sanitize";
+import { safeErrorLog } from "../lib/privacy";
 import { enviarCorreoNotificacion } from "./email.service";
 
 export interface CrearSolicitudInput {
@@ -27,13 +28,20 @@ export async function crearSolicitud(data: CrearSolicitudInput) {
 
   const nuevaSolicitud = await Solicitud.create({ ...sanitizedData, estado: "nuevo" });
 
-  try {
-    await enviarCorreoNotificacion(nuevaSolicitud);
-  } catch (error) {
-    console.error("⚠ No se pudo enviar el correo de notificación:", error);
-  }
+  // El correo es una notificación secundaria: no se espera (si Resend tarda o se cuelga, la
+  // respuesta no se demora) y si falla solo queda en el log. La solicitud ya está guardada.
+  void notificarPorCorreo(nuevaSolicitud);
 
   return nuevaSolicitud;
+}
+
+async function notificarPorCorreo(solicitud: SolicitudDocument) {
+  try {
+    await enviarCorreoNotificacion(solicitud);
+  } catch (error) {
+    // safeErrorLog enmascara correos, teléfonos y API keys; se identifica la solicitud por id.
+    console.error(`[Correo] No se pudo enviar la notificación de la solicitud ${solicitud.id}: ${safeErrorLog(error)}`);
+  }
 }
 
 export async function listarSolicitudes(filtro?: { estado?: SolicitudEstado; origen?: SolicitudAttrs["origen"] }) {
@@ -46,5 +54,7 @@ export async function listarSolicitudes(filtro?: { estado?: SolicitudEstado; ori
 }
 
 export async function actualizarEstadoSolicitud(id: string, estado: SolicitudEstado) {
-  return await Solicitud.findByIdAndUpdate(id, { estado }, { new: true });
+  // runValidators: findByIdAndUpdate no valida contra el schema por defecto (un estado
+  // inexistente se guardaría tal cual).
+  return await Solicitud.findByIdAndUpdate(id, { estado }, { new: true, runValidators: true });
 }

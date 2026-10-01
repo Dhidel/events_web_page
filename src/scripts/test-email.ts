@@ -1,4 +1,5 @@
 import { enviarCorreoNotificacion } from "../services/email.service";
+import { safeErrorLog } from "../lib/privacy";
 
 async function main() {
   console.log("Probando enviarCorreoNotificacion con plantilla HTML...");
@@ -16,7 +17,7 @@ async function main() {
 
     console.log(" Resultado:", res);
   } catch (err) {
-    console.error(" Error en la prueba:", err);
+    console.error(` Error en la prueba: ${safeErrorLog(err)}`);
   }
 }
 

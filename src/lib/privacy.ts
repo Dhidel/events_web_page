@@ -33,11 +33,16 @@ const EMAIL_RE = /[^\s@"'<>(){}\[\],;:]+@[^\s@"'<>(){}\[\],;:]+\.[a-z]{2,}/gi;
 const PHONE_RE = /\+?\d[\d\s-]{6,}\d/g;
 // Usuario y contraseña dentro de una URI ("mongodb+srv://user:pass@host"): se ocultan completos.
 const URI_CREDENTIALS_RE = /\/\/[^/\s:@]+:[^@\s]+@/g;
+// API keys de Resend ("re_AbC123_xYz...") y cualquier "Bearer <token>": se ocultan completas.
+const RESEND_KEY_RE = /\bre_[A-Za-z0-9_]{6,}/g;
+const BEARER_RE = /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi;
 
 // Busca correos y teléfonos dentro de un texto libre (mensajes de error, stacks) y los enmascara.
 export function redactPII(text: string): string {
   return text
     .replace(URI_CREDENTIALS_RE, "//****:****@")
+    .replace(RESEND_KEY_RE, "re_****")
+    .replace(BEARER_RE, "Bearer ****")
     .replace(EMAIL_RE, maskEmail).replace(PHONE_RE, (m) => (m.replace(/\D/g, "").length >= 8 ? maskPhone(m) : m));
 }
 

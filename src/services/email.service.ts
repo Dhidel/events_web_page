@@ -170,6 +170,8 @@ export async function enviarCorreoNotificacion(solicitud: SolicitudParaCorreo) {
       ? `Nueva Cotización: ${solicitud.nombre}`
       : `Nuevo Contacto: ${solicitud.nombre}`;
 
+  if (!resend) throw new Error("RESEND_API_KEY no está configurada: no se envió el correo.");
+
   const html = generarTemplateCorreo(solicitud);
 
   const { data, error } = await resend.emails.send({
@@ -179,11 +181,12 @@ export async function enviarCorreoNotificacion(solicitud: SolicitudParaCorreo) {
     html,
   });
 
+  // No se loguea aquí el objeto de error de Resend (puede traer direcciones de correo):
+  // se lanza y quien lo atrapa lo registra enmascarado con safeErrorLog.
   if (error) {
-    console.error("❌ [EmailService] Error al enviar notificación:", error);
-    throw new Error(`Error enviando correo: ${error.message}`);
+    throw new Error(`Resend rechazó el envío (${error.statusCode ?? "sin código"} ${error.name}): ${error.message}`);
   }
 
-  console.log(" Correo enviado con éxito por Resend. ID:", data?.id);
+  console.log(`[Correo] Notificación enviada por Resend (id ${data?.id}).`);
   return data;
 }

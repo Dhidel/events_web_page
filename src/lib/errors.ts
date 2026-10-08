@@ -1,4 +1,5 @@
 import { Elysia, type ValidationError } from "elysia";
+import mongoose from "mongoose";
 import { safeErrorLog } from "./privacy";
 
 // Formato único de error de toda la API: { error: "mensaje para el usuario" }.
@@ -36,6 +37,14 @@ export const errorHandler = new Elysia({ name: "error-handler" }).onError(
       return { error: error.message };
     }
 
+    // Dato que pasó el esquema de la ruta pero no el del modelo (p. ej. un nombre que queda
+    // vacío al quitarle el HTML): es un dato inválido del usuario, no un error del servidor.
+    // Igual que en VALIDATION, solo se nombran los campos; nunca los valores ni el detalle.
+    if (error instanceof mongoose.Error.ValidationError) {
+      set.status = 422;
+      return { error: `Datos inválidos o faltantes: ${Object.keys(error.errors).join(", ")}.` };
+    }
+
     switch (code) {
       case "VALIDATION":
         // Si lo que no pasa la validación es la *respuesta*, el error es del servidor
@@ -45,7 +54,7 @@ export const errorHandler = new Elysia({ name: "error-handler" }).onError(
         return { error: validationMessage(error) };
       case "INVALID_FILE_TYPE":
         set.status = 422;
-        return { error: "El archivo debe ser una imagen." };
+        return { error: "El archivo debe ser una imagen JPG, PNG o WebP." };
       case "PARSE":
         set.status = 400;
         return { error: "El cuerpo de la solicitud no tiene un formato válido." };

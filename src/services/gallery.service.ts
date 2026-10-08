@@ -1,4 +1,5 @@
 import { GalleryImage, CATEGORY_LABELS, type GalleryCategory } from "../models/GalleryImage";
+import { sanitizeText } from "../lib/sanitize";
 
 export interface CrearImagenInput {
   imageUrl: string;
@@ -29,6 +30,9 @@ export async function obtenerImagenPorId(id: string) {
 export async function crearImagenGaleria(data: CrearImagenInput) {
   return await GalleryImage.create({
     ...data,
+    // alt y label se muestran en el sitio: sin espacios sobrantes ni HTML (igual que Contacto).
+    alt: sanitizeText(data.alt),
+    label: sanitizeText(data.label),
     categoryLabel: CATEGORY_LABELS[data.category],
     order: data.order ?? 0,
   });
@@ -40,8 +44,8 @@ export async function actualizarImagenGaleria(id: string, data: EditarImagenInpu
 
   if (data.imageUrl !== undefined) doc.imageUrl = data.imageUrl;
   if (data.publicId !== undefined) doc.publicId = data.publicId;
-  if (data.alt !== undefined) doc.alt = data.alt;
-  if (data.label !== undefined) doc.label = data.label;
+  if (data.alt !== undefined) doc.alt = sanitizeText(data.alt);
+  if (data.label !== undefined) doc.label = sanitizeText(data.label);
   if (data.category !== undefined) {
     doc.category = data.category;
     doc.categoryLabel = CATEGORY_LABELS[data.category];

@@ -3,9 +3,11 @@ import { adminGuard } from "../middleware/adminGuard";
 import { SOLICITUD_ESTADOS, type SolicitudEstado } from "../models/Solicitud";
 import { adminDetail, errorResponses, IdParams, SolicitudSchema, toApi } from "../lib/apiSchemas";
 import { ApiError } from "../lib/errors";
+import { rechazarCamposExtra } from "../lib/validation";
 import { listarSolicitudes, actualizarEstadoSolicitud } from "../services/solicitud.service";
 
 const estadoSchema = t.Union(SOLICITUD_ESTADOS.map((value) => t.Literal(value)));
+const CambiarEstadoBody = t.Object({ estado: estadoSchema }, { additionalProperties: false });
 
 export const adminCotizacionesRoutes = new Elysia({ prefix: "/api/admin/cotizaciones" })
   .use(adminGuard)
@@ -39,9 +41,8 @@ export const adminCotizacionesRoutes = new Elysia({ prefix: "/api/admin/cotizaci
     {
       params: IdParams,
       parse: "json",
-      body: t.Object({
-        estado: estadoSchema,
-      }),
+      body: CambiarEstadoBody,
+      transform: rechazarCamposExtra(CambiarEstadoBody),
       response: { 200: SolicitudSchema, ...errorResponses(400, 401, 404, 422, 500) },
       detail: {
         ...adminDetail,

@@ -202,12 +202,12 @@ function NewImageForm({
           {preview ? (
             <img src={preview} alt="Vista previa" />
           ) : (
-            <span>Haz clic para elegir una imagen</span>
+            <span>Haz clic para elegir una imagen (JPG, PNG o WebP, máx. 10 MB)</span>
           )}
           <input
             key={formKey}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
             hidden
           />
@@ -344,7 +344,7 @@ function GalleryCard({
         </span>
         <input
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
           hidden
         />

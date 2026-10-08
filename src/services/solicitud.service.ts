@@ -56,5 +56,5 @@ export async function listarSolicitudes(filtro?: { estado?: SolicitudEstado; ori
 export async function actualizarEstadoSolicitud(id: string, estado: SolicitudEstado) {
   // runValidators: findByIdAndUpdate no valida contra el schema por defecto (un estado
   // inexistente se guardaría tal cual).
-  return await Solicitud.findByIdAndUpdate(id, { estado }, { new: true, runValidators: true });
+  return await Solicitud.findByIdAndUpdate(id, { estado }, { returnDocument: "after", runValidators: true });
 }

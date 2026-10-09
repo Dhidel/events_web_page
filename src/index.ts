@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia";
 import { openapi } from "@elysiajs/openapi";
 import { staticPlugin } from "@elysiajs/static";
-import { cors } from "@elysiajs/cors";
 import { connectDB } from "./db";
 import { authRoutes } from "./routes/auth";
 import { galleryRoutes } from "./routes/gallery";
@@ -12,12 +11,14 @@ import { adminCotizacionesRoutes } from "./routes/adminCotizaciones";
 import { adminGuard } from "./middleware/adminGuard";
 import { adminDetail, errorResponses } from "./lib/apiSchemas";
 import { errorHandler } from "./lib/errors";
+import { DEV_ORIGIN, seguridadHttp } from "./lib/seguridadHttp";
 
 await connectDB();
 
 const isProduction = process.env.NODE_ENV === "production";
-const VITE_DEV_ORIGIN = "http://localhost:5173";
 const CLIENT_DIST = "client/dist";
+// Los hostings asignan el puerto con PORT; en local queda 3000.
+const PORT = Number(process.env.PORT ?? 3000);
 
 // Todo lo que empiece con /api/admin pasa primero por adminGuard (requiere JWT válido).
 const adminRoutes = new Elysia({ prefix: "/api/admin" })
@@ -68,11 +69,9 @@ const app = new Elysia()
       },
     })
   )
-  .use(
-    cors({
-      origin: isProduction ? true : VITE_DEV_ORIGIN,
-    })
-  )
+  // CORS (CORS_ORIGIN; en desarrollo siempre http://localhost:5173) y HSTS en producción.
+  // Ver src/lib/seguridadHttp.ts.
+  .use(seguridadHttp({ produccion: isProduction, corsOrigin: process.env.CORS_ORIGIN }))
   .get("/api/health", () => ({ status: "ok" as const }), {
     response: { 200: t.Object({ status: t.Literal("ok") }, { examples: [{ status: "ok" }] }) },
     detail: { tags: ["Público"], summary: "Estado del servidor", description: "Responde { status: \"ok\" } si el servidor está arriba." },
@@ -102,8 +101,8 @@ if (isProduction) {
     .get("/*", () => Bun.file(`${CLIENT_DIST}/index.html`));
 }
 
-app.listen(3000);
+app.listen(PORT);
 
 console.log(
-  `Servidor ejecutándose en http://localhost:${app.server?.port} (${isProduction ? "producción — sirviendo client/dist" : "desarrollo — solo API, frontend en " + VITE_DEV_ORIGIN})`
+  `Servidor ejecutándose en http://localhost:${app.server?.port} (${isProduction ? "producción — sirviendo client/dist" : "desarrollo — solo API, frontend en " + DEV_ORIGIN})`
 );

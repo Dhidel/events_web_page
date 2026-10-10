@@ -14,7 +14,13 @@ import {
   TELEFONO_MAX,
 } from "../lib/validators";
 import { fetchServicios, submitCotizacion, type Servicio } from "../lib/api";
-import { guardarYAbrirWhatsApp } from "../lib/whatsapp";
+import {
+  enlaceWhatsApp,
+  guardarYAbrirWhatsApp,
+  leerEstimadoGuardado,
+  mensajeEstimado,
+  redondearMonto,
+} from "../lib/whatsapp";
 
 type ContactField = "name" | "phone" | "email";
 type ContactState = Record<ContactField, string>;
@@ -23,7 +29,8 @@ type ContactState = Record<ContactField, string>;
 type Confirmacion =
   | { estado: "inicial" }
   | { estado: "guardando" }
-  | { estado: "guardada"; whatsappAbierto: boolean }
+  // preciosActualizados: el servidor guardó un total distinto al que veía el cliente.
+  | { estado: "guardada"; whatsappAbierto: boolean; preciosActualizados: boolean }
   | { estado: "error"; mensaje: string };
 
 // Si el backend no responde en este tiempo se trata como error (y se ofrece reintentar).
@@ -51,7 +58,27 @@ export default function Cotizador() {
       .catch(() => setStatus("error"));
   }, []);
 
+  const reintentarCarga = () => {
+    setStatus("loading");
+    fetchServicios()
+      .then((data) => {
+        setServicios(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  };
+
+  // Vuelve a pedir el catálogo sin tocar la selección, para mostrar precios y personajes
+  // vigentes. Si falla no pasa nada: se sigue con el catálogo que ya estaba en pantalla.
+  const refrescarCatalogo = () => {
+    fetchServicios()
+      .then(setServicios)
+      .catch(() => {});
+  };
+
   const changeQty = (id: string, delta: number) => {
+    // Mientras se guarda, la selección no cambia: lo que se ve es lo que se está enviando.
+    if (guardandoRef.current) return;
     setQuantities((prev) => ({
       ...prev,
       [id]: Math.min(20, Math.max(0, (prev[id] ?? 0) + delta)),
@@ -61,6 +88,7 @@ export default function Cotizador() {
   };
 
   const resetQuoter = () => {
+    if (guardandoRef.current) return;
     setQuantities({});
     setContact({ name: "", phone: "", email: "" });
     setContactErrors({ name: "", phone: "", email: "" });
@@ -80,28 +108,29 @@ export default function Cotizador() {
     });
   };
 
-  const { total, totalQty, lines, waMessage } = useMemo(() => {
+  const { total, totalQty, lines, waHref } = useMemo(() => {
     let total = 0;
     let totalQty = 0;
     const lines: { id: string; name: string; qty: number; subtotal: number }[] = [];
     for (const servicio of servicios) {
       const qty = quantities[servicio.id] ?? 0;
       if (qty > 0) {
-        const subtotal = qty * servicio.precio;
-        total += subtotal;
+        const subtotal = redondearMonto(qty * servicio.precio);
+        total = redondearMonto(total + subtotal);
         totalQty += qty;
         lines.push({ id: servicio.id, name: servicio.nombre, qty, subtotal });
       }
     }
-    const waMessage =
-      "Hola! Use el cotizador del sitio y me interesa este estimado:\n" +
-      lines.map((l) => `${l.qty}x ${l.name} (Q${l.subtotal.toLocaleString("es-GT")})`).join("\n") +
-      `\nTotal estimado: Q${total.toLocaleString("es-GT")}`;
-    return { total, totalQty, lines, waMessage };
+    const waHref = enlaceWhatsApp(
+      mensajeEstimado(
+        lines.map((l) => ({ nombre: l.name, cantidad: l.qty, subtotal: l.subtotal })),
+        total
+      )
+    );
+    return { total, totalQty, lines, waHref };
   }, [servicios, quantities]);
 
   const hasSelection = totalQty > 0;
-  const waHref = `https://wa.me/50230738716?text=${encodeURIComponent(waMessage)}`;
 
   // Se usa tanto en "Confirmar" como en "Reintentar". Tiene que llamarse directo desde el
   // clic: guardarYAbrirWhatsApp abre la pestaña de WhatsApp antes de esperar al servidor.
@@ -120,7 +149,12 @@ export default function Cotizador() {
     setConfirmacion({ estado: "guardando" });
 
     const resultado = await guardarYAbrirWhatsApp({
-      waHref,
+      // WhatsApp se abre con el estimado que guardó el servidor (precios vigentes), no con el
+      // que se calculó aquí: si un precio cambió, el mensaje y lo guardado coinciden.
+      waHref: (guardada) => {
+        const estimado = leerEstimadoGuardado(guardada.detalleCotizador);
+        return estimado ? enlaceWhatsApp(mensajeEstimado(estimado.lineas, estimado.total)) : waHref;
+      },
       guardar: () =>
         submitCotizacion(
           {
@@ -140,11 +174,19 @@ export default function Cotizador() {
     });
 
     guardandoRef.current = false;
-    setConfirmacion(
-      resultado.ok
-        ? { estado: "guardada", whatsappAbierto: resultado.whatsappAbierto }
-        : { estado: "error", mensaje: resultado.error }
-    );
+
+    if (!resultado.ok) {
+      // Puede haber fallado porque el catálogo cambió (un personaje ya no está disponible).
+      refrescarCatalogo();
+      setConfirmacion({ estado: "error", mensaje: resultado.error });
+      return;
+    }
+
+    const estimado = leerEstimadoGuardado(resultado.guardado.detalleCotizador);
+    const preciosActualizados = estimado !== null && estimado.total !== total;
+    // Con el catálogo al día, el panel muestra el mismo total que quedó guardado.
+    if (preciosActualizados) refrescarCatalogo();
+    setConfirmacion({ estado: "guardada", whatsappAbierto: resultado.whatsappAbierto, preciosActualizados });
   };
 
   const guardando = confirmacion.estado === "guardando";
@@ -177,7 +219,12 @@ export default function Cotizador() {
 
               {status === "loading" && <p className="gallery-empty">Cargando servicios…</p>}
               {status === "error" && (
-                <p className="gallery-empty">No se pudieron cargar los servicios, intenta de nuevo.</p>
+                <div className="gallery-empty">
+                  <p>No se pudieron cargar los servicios.</p>
+                  <button type="button" className="btn btn-outline" onClick={reintentarCarga} style={{ marginTop: "14px" }}>
+                    Reintentar
+                  </button>
+                </div>
               )}
               {status === "ready" && (
                 <div className="acts-selector">
@@ -194,6 +241,7 @@ export default function Cotizador() {
                           type="button"
                           className="qty-btn qty-minus"
                           onClick={() => changeQty(servicio.id, -1)}
+                          disabled={guardando}
                         >
                           –
                         </button>
@@ -209,6 +257,7 @@ export default function Cotizador() {
                           type="button"
                           className="qty-btn qty-plus"
                           onClick={() => changeQty(servicio.id, 1)}
+                          disabled={guardando}
                         >
                           +
                         </button>
@@ -335,6 +384,12 @@ export default function Cotizador() {
                       ¡Listo! Guardamos tu cotización.{" "}
                       {confirmacion.whatsappAbierto ? "¿No se abrió WhatsApp?" : "Continúa en WhatsApp:"}
                     </p>
+                    {confirmacion.preciosActualizados && (
+                      <p className="quoter-hint" role="status">
+                        Nuestros precios se actualizaron mientras armabas tu estimado. El total de arriba y el
+                        mensaje de WhatsApp ya usan los precios vigentes.
+                      </p>
+                    )}
                     <a
                       href={waHref}
                       target="_blank"
@@ -370,6 +425,7 @@ export default function Cotizador() {
                     type="button"
                     className="btn btn-reset"
                     onClick={resetQuoter}
+                    disabled={guardando}
                     style={{ width: "100%", justifyContent: "center", marginTop: "12px" }}
                   >
                     Reiniciar cotización

@@ -249,3 +249,26 @@ describe("POST /api/cotizaciones — spam y duplicados", () => {
     expect((await postDesde("203.0.113.51", { ...solicitud, mensaje: "Desde otra IP" })).status).toBe(201);
   });
 });
+
+describe("POST /api/cotizaciones — detalles de entrada", () => {
+  test("una cantidad enviada como texto (\"2\") se rechaza", async () => {
+    const servicio = await Servicio.create({ nombre: "Zanquero", descripcion: "x", categoria: "Zanqueros", precio: 2500 });
+    const res = await post({ ...contacto, origen: "cotizador", detalleCotizador: { personajes: [{ servicioId: servicio.id, cantidad: "2" }] } });
+    expect(res.status).toBe(422);
+    expect(await Solicitud.countDocuments()).toBe(0);
+  });
+
+  test("un \"<\" suelto en el nombre o el mensaje se conserva; las etiquetas se quitan", async () => {
+    const res = await post({
+      nombre: "Juan <3 María",
+      telefono: "5555-1234",
+      correo: "juan@example.com",
+      origen: "contacto",
+      mensaje: "Somos < 50 invitados <b>aprox</b><!-- oculto --> y x > y",
+    });
+    expect(res.status).toBe(201);
+    const guardada = await res.json();
+    expect(guardada.nombre).toBe("Juan <3 María");
+    expect(guardada.mensaje).toBe("Somos < 50 invitados aprox y x > y");
+  });
+});

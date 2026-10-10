@@ -1,5 +1,11 @@
 import { describe, expect, mock, test } from "bun:test";
-import { guardarYAbrirWhatsApp } from "../../client/src/lib/whatsapp";
+import {
+  enlaceWhatsApp,
+  guardarYAbrirWhatsApp,
+  leerEstimadoGuardado,
+  mensajeEstimado,
+  redondearMonto,
+} from "../../client/src/lib/whatsapp";
 
 // Flujo de Confirmar del Cotizador (client/src/lib/whatsapp.ts) con una pestaña falsa:
 // se revisa a dónde navega y si se cierra, sin necesitar un navegador.
@@ -26,7 +32,7 @@ describe("guardarYAbrirWhatsApp", () => {
       abrirPestana: () => pestana as unknown as Window,
     });
 
-    expect(resultado).toEqual({ ok: true, whatsappAbierto: true });
+    expect(resultado).toMatchObject({ ok: true, whatsappAbierto: true });
     expect(pestana.location.href).toBe(WA);
     expect(pestana.close).not.toHaveBeenCalled();
   });
@@ -72,7 +78,7 @@ describe("guardarYAbrirWhatsApp", () => {
     const guardar = mock(async () => ({ id: "1" }));
     const resultado = await guardarYAbrirWhatsApp({ waHref: WA, guardar, abrirPestana: () => null });
     expect(guardar).toHaveBeenCalledTimes(1);
-    expect(resultado).toEqual({ ok: true, whatsappAbierto: false });
+    expect(resultado).toMatchObject({ ok: true, whatsappAbierto: false });
   });
 
   test("si el usuario cerró la pestaña mientras se guardaba, no intenta navegarla", async () => {
@@ -84,7 +90,7 @@ describe("guardarYAbrirWhatsApp", () => {
       },
       abrirPestana: () => pestana as unknown as Window,
     });
-    expect(resultado).toEqual({ ok: true, whatsappAbierto: false });
+    expect(resultado).toMatchObject({ ok: true, whatsappAbierto: false });
     expect(pestana.location.href).toBe("about:blank");
   });
 
@@ -112,7 +118,7 @@ describe("guardarYAbrirWhatsApp", () => {
       abrirPestana: () => pestana as unknown as Window,
     });
 
-    expect(resultado).toEqual({ ok: true, whatsappAbierto: true });
+    expect(resultado).toMatchObject({ ok: true, whatsappAbierto: true });
     expect(orden).toEqual([`navegar a ${WA}`, "opener = null"]);
   });
 
@@ -134,7 +140,7 @@ describe("guardarYAbrirWhatsApp", () => {
     });
 
     // Se guardó; la página muestra el botón "Abrir WhatsApp" en vez de dejar la pestaña en blanco.
-    expect(resultado).toEqual({ ok: true, whatsappAbierto: false });
+    expect(resultado).toMatchObject({ ok: true, whatsappAbierto: false });
     expect(pestana.close).toHaveBeenCalledTimes(1);
   });
 
@@ -159,7 +165,7 @@ describe("guardarYAbrirWhatsApp", () => {
       abrirPestana: () => pestana as unknown as Window,
     });
 
-    expect(resultado).toEqual({ ok: true, whatsappAbierto: true });
+    expect(resultado).toMatchObject({ ok: true, whatsappAbierto: true });
     expect(navegada).toBe(WA);
     expect(pestana.close).not.toHaveBeenCalled();
   });
@@ -178,7 +184,54 @@ describe("guardarYAbrirWhatsApp", () => {
 
     const segunda = pestanaFalsa();
     const r2 = await guardarYAbrirWhatsApp({ waHref: WA, guardar, abrirPestana: () => segunda as unknown as Window });
-    expect(r2).toEqual({ ok: true, whatsappAbierto: true });
+    expect(r2).toMatchObject({ ok: true, whatsappAbierto: true });
     expect(segunda.location.href).toBe(WA);
+  });
+});
+
+describe("WhatsApp con el estimado que guardó el servidor", () => {
+  // El cliente armó su estimado con Q3,800 c/u, pero el precio subió a Q4,500 antes de confirmar.
+  const guardada = {
+    id: "1",
+    detalleCotizador: {
+      personajes: [{ servicioId: "a", nombre: "Batucada", cantidad: 2, precioUnitario: 4500, subtotal: 9000 }],
+      total: 9000,
+    },
+  };
+
+  test("si waHref es una función, la pestaña navega al enlace armado con lo guardado", async () => {
+    const pestana = pestanaFalsa();
+    const resultado = await guardarYAbrirWhatsApp({
+      waHref: (g: typeof guardada) => {
+        const estimado = leerEstimadoGuardado(g.detalleCotizador)!;
+        return enlaceWhatsApp(mensajeEstimado(estimado.lineas, estimado.total));
+      },
+      guardar: async () => guardada,
+      abrirPestana: () => pestana as unknown as Window,
+    });
+
+    expect(resultado).toMatchObject({ ok: true, whatsappAbierto: true, guardado: guardada });
+    const mensaje = decodeURIComponent(pestana.location.href.split("?text=")[1]!);
+    expect(mensaje).toContain("2x Batucada (Q9,000)");
+    expect(mensaje).toContain("Total estimado: Q9,000");
+    expect(mensaje).not.toContain("7,600");
+  });
+
+  test("leerEstimadoGuardado devuelve null si el detalle no tiene la forma esperada", () => {
+    expect(leerEstimadoGuardado(undefined)).toBeNull();
+    expect(leerEstimadoGuardado({ personajes: [], total: "9000" })).toBeNull();
+    expect(leerEstimadoGuardado({ personajes: [{ nombre: "X" }], total: 1 })).toBeNull();
+  });
+
+  test("el mensaje dice 'Usé' y lista cada línea con su subtotal", () => {
+    expect(mensajeEstimado([{ nombre: "Zanquero", cantidad: 3, subtotal: 7500 }], 7500)).toBe(
+      "Hola! Usé el cotizador del sitio y me interesa este estimado:\n3x Zanquero (Q7,500)\nTotal estimado: Q7,500"
+    );
+  });
+
+  test("redondearMonto deja los montos en centavos", () => {
+    expect(redondearMonto(0.1 * 3)).toBe(0.3);
+    expect(redondearMonto(1999.99 * 3 + 0.1 * 7)).toBe(6000.67);
+    expect(redondearMonto(7600)).toBe(7600);
   });
 });

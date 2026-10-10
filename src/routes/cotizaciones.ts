@@ -73,6 +73,16 @@ const CotizacionBody = t.Object(
   { additionalProperties: false }
 );
 
+// Elysia convierte "2" (texto) a 2 antes de validar, así que t.Integer no lo rechaza. Aquí,
+// en `transform`, el body todavía está como llegó: las cantidades tienen que ser números.
+function rechazarCantidadesNoNumericas({ body }: { body: unknown }) {
+  const personajes = (body as { detalleCotizador?: { personajes?: unknown } } | null)?.detalleCotizador?.personajes;
+  if (!Array.isArray(personajes)) return;
+  if (personajes.some((p) => p !== null && typeof p === "object" && "cantidad" in p && typeof p.cantidad !== "number")) {
+    throw new ApiError(422, "Datos inválidos o faltantes: detalleCotizador.");
+  }
+}
+
 // El patrón del body solo revisa la forma "YYYY-MM-DD"; esto descarta días que no existen
 // (2026-02-31). Se arma en UTC para que la zona horaria del servidor no mueva el día.
 function esFechaReal(fecha: string): boolean {
@@ -116,7 +126,7 @@ export const cotizacionesRoutes = new Elysia().post(
   {
     parse: "json",
     body: CotizacionBody,
-    transform: rechazarCamposExtra(CotizacionBody),
+    transform: [rechazarCamposExtra(CotizacionBody), rechazarCantidadesNoNumericas],
     response: { 201: SolicitudSchema, ...errorResponses(400, 422, 429, 500) },
     detail: {
       tags: ["Público"],

@@ -150,3 +150,15 @@ describe("redactPII enmascara credenciales", () => {
     expect(redactPII("campo re_id")).toBe("campo re_id");
   });
 });
+
+describe("correo de notificación: texto del cliente", () => {
+  test("un \"<\" o \"&\" del cliente llega escapado, no como HTML", async () => {
+    await crearSolicitud({ ...CLIENTE, nombre: "Juan <3 María & Cía", mensaje: "Somos < 50 invitados" });
+    await esperarNotificacion();
+
+    const html = resendFalso.enviados[0]!.html;
+    expect(html).toContain("Juan &lt;3 María &amp; Cía");
+    expect(html).toContain("Somos &lt; 50 invitados");
+    expect(html).not.toContain("Juan <3");
+  });
+});

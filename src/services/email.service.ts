@@ -20,6 +20,17 @@ interface ItemCotizacion {
   subtotal?: number;
 }
 
+// El texto del cliente va dentro del HTML del correo: se escapa para que un "<" o "&"
+// se muestre tal cual en vez de interpretarse como HTML.
+function escaparHtml(texto: unknown): string {
+  return String(texto ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function formatearMoneda(monto: number | undefined): string {
   if (typeof monto !== "number") return "-";
   return `Q${monto.toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -48,8 +59,8 @@ function generarTemplateCorreo(solicitud: SolicitudParaCorreo): string {
       .map(
         (item) => `
         <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 10px 8px; color: #111827; font-size: 14px;">${item.nombre || "Servicio"}</td>
-          <td style="padding: 10px 8px; text-align: center; color: #374151; font-size: 14px;">${item.cantidad ?? 1}</td>
+          <td style="padding: 10px 8px; color: #111827; font-size: 14px;">${escaparHtml(item.nombre || "Servicio")}</td>
+          <td style="padding: 10px 8px; text-align: center; color: #374151; font-size: 14px;">${escaparHtml(item.cantidad ?? 1)}</td>
           <td style="padding: 10px 8px; text-align: right; color: #374151; font-size: 14px;">${formatearMoneda(item.precioUnitario)}</td>
           <td style="padding: 10px 8px; text-align: right; color: #111827; font-weight: 600; font-size: 14px;">${formatearMoneda(item.subtotal)}</td>
         </tr>
@@ -113,22 +124,22 @@ function generarTemplateCorreo(solicitud: SolicitudParaCorreo): string {
         </tr>
         <tr>
           <td style="padding: 6px 0; color: #6b7280; font-weight: 600;">Nombre:</td>
-          <td style="padding: 6px 0; color: #111827;">${solicitud.nombre}</td>
+          <td style="padding: 6px 0; color: #111827;">${escaparHtml(solicitud.nombre)}</td>
         </tr>
         <tr>
           <td style="padding: 6px 0; color: #6b7280; font-weight: 600;">Teléfono:</td>
-          <td style="padding: 6px 0; color: #111827;"><a href="tel:${solicitud.telefono}" style="color: #2563eb; text-decoration: none;">${solicitud.telefono}</a></td>
+          <td style="padding: 6px 0; color: #111827;"><a href="tel:${escaparHtml(solicitud.telefono)}" style="color: #2563eb; text-decoration: none;">${escaparHtml(solicitud.telefono)}</a></td>
         </tr>
         <tr>
           <td style="padding: 6px 0; color: #6b7280; font-weight: 600;">Correo:</td>
-          <td style="padding: 6px 0; color: #111827;"><a href="mailto:${solicitud.correo}" style="color: #2563eb; text-decoration: none;">${solicitud.correo}</a></td>
+          <td style="padding: 6px 0; color: #111827;"><a href="mailto:${escaparHtml(solicitud.correo)}" style="color: #2563eb; text-decoration: none;">${escaparHtml(solicitud.correo)}</a></td>
         </tr>
         ${
           solicitud.tipoEvento
             ? `
         <tr>
           <td style="padding: 6px 0; color: #6b7280; font-weight: 600;">Tipo de Evento:</td>
-          <td style="padding: 6px 0; color: #111827;">${solicitud.tipoEvento}</td>
+          <td style="padding: 6px 0; color: #111827;">${escaparHtml(solicitud.tipoEvento)}</td>
         </tr>`
             : ""
         }
@@ -137,7 +148,7 @@ function generarTemplateCorreo(solicitud: SolicitudParaCorreo): string {
             ? `
         <tr>
           <td style="padding: 6px 0; color: #6b7280; font-weight: 600;">Fecha de Evento:</td>
-          <td style="padding: 6px 0; color: #111827;">${solicitud.fechaEvento}</td>
+          <td style="padding: 6px 0; color: #111827;">${escaparHtml(solicitud.fechaEvento)}</td>
         </tr>`
             : ""
         }
@@ -148,7 +159,7 @@ function generarTemplateCorreo(solicitud: SolicitudParaCorreo): string {
           ? `
         <div style="margin-top: 16px; padding: 14px; background-color: #f9fafb; border-left: 4px solid #2563eb; border-radius: 4px;">
           <strong style="color: #1f2937; font-size: 13px; text-transform: uppercase;">Mensaje del cliente:</strong>
-          <p style="margin: 6px 0 0 0; color: #374151; font-size: 14px; white-space: pre-line;">${solicitud.mensaje}</p>
+          <p style="margin: 6px 0 0 0; color: #374151; font-size: 14px; white-space: pre-line;">${escaparHtml(solicitud.mensaje)}</p>
         </div>`
           : ""
       }

@@ -221,3 +221,19 @@ describe("recalcularDetalleCotizador (con MongoDB en memoria)", () => {
     expect(detalle.total).toBe(50000);
   });
 });
+
+describe("precios con centavos", () => {
+  test("subtotales y total se redondean a centavos (sin 0.30000000000000004)", () => {
+    const catalogo = [
+      { id: "a", nombre: "Diez centavos", precio: 0.1 },
+      { id: "b", nombre: "Con centavos", precio: 1999.99 },
+    ];
+    const detalle = calcularEstimado(catalogo, [
+      { servicioId: "a", cantidad: 3 },
+      { servicioId: "b", cantidad: 3 },
+      { servicioId: "a2", cantidad: 0 },
+    ]);
+    expect(detalle.personajes.map((p) => p.subtotal)).toEqual([0.3, 5999.97]);
+    expect(detalle.total).toBe(6000.27);
+  });
+});

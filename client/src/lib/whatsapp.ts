@@ -5,9 +5,44 @@
 // Solución: abrir una pestaña en blanco en el mismo clic y, cuando responde el servidor,
 // mandarla a WhatsApp (si se guardó) o cerrarla (si falló).
 
-export type ResultadoConfirmacion =
-  | { ok: true; whatsappAbierto: boolean }
+export type ResultadoConfirmacion<T = unknown> =
+  | { ok: true; whatsappAbierto: boolean; guardado: T }
   | { ok: false; error: string };
+
+const WHATSAPP_NUMERO = "50230738716";
+
+export interface LineaEstimado {
+  nombre: string;
+  cantidad: number;
+  subtotal: number;
+}
+
+// Redondea a centavos (igual que el servidor): sin esto, un precio con decimales deja
+// montos como 0.30000000000000004.
+export const redondearMonto = (monto: number) => Math.round((monto + Number.EPSILON) * 100) / 100;
+
+// Mensaje que el cliente manda por WhatsApp con su estimado.
+export function mensajeEstimado(lineas: LineaEstimado[], total: number): string {
+  return (
+    "Hola! Usé el cotizador del sitio y me interesa este estimado:\n" +
+    lineas.map((l) => `${l.cantidad}x ${l.nombre} (Q${l.subtotal.toLocaleString("es-GT")})`).join("\n") +
+    `\nTotal estimado: Q${total.toLocaleString("es-GT")}`
+  );
+}
+
+export const enlaceWhatsApp = (mensaje: string) => `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensaje)}`;
+
+// Detalle que devuelve el servidor al guardar (calculado con los precios vigentes). Llega como
+// objeto libre; devuelve null si no tiene la forma esperada.
+export function leerEstimadoGuardado(detalle: unknown): { lineas: LineaEstimado[]; total: number } | null {
+  const d = detalle as { personajes?: unknown; total?: unknown } | null | undefined;
+  if (!d || !Array.isArray(d.personajes) || typeof d.total !== "number") return null;
+  const lineas = d.personajes as Partial<LineaEstimado>[];
+  const validas = lineas.every(
+    (l) => typeof l?.nombre === "string" && typeof l.cantidad === "number" && typeof l.subtotal === "number"
+  );
+  return validas ? { lineas: lineas as LineaEstimado[], total: d.total } : null;
+}
 
 // Pestaña de espera. Devuelve null si el navegador la bloqueó igual.
 //
@@ -40,19 +75,24 @@ export function mensajeDeError(error: unknown): string {
 
 // Debe llamarse directamente desde el manejador del clic: la pestaña se abre de forma
 // síncrona (antes del primer await), mientras el clic todavía cuenta como del usuario.
-export async function guardarYAbrirWhatsApp({
+//
+// `waHref` puede ser una función de lo que devolvió el servidor: así el mensaje de WhatsApp
+// lleva el estimado que realmente quedó guardado (los precios pudieron cambiar desde que el
+// cliente abrió la página).
+export async function guardarYAbrirWhatsApp<T>({
   waHref,
   guardar,
   abrirPestana = abrirPestanaEnEspera,
 }: {
-  waHref: string;
-  guardar: () => Promise<unknown>;
+  waHref: string | ((guardado: T) => string);
+  guardar: () => Promise<T>;
   abrirPestana?: () => Window | null;
-}): Promise<ResultadoConfirmacion> {
+}): Promise<ResultadoConfirmacion<T>> {
   const pestana = abrirPestana();
 
+  let guardado: T;
   try {
-    await guardar();
+    guardado = await guardar();
   } catch (error) {
     // No se abre WhatsApp si la cotización no quedó guardada.
     pestana?.close();
@@ -60,8 +100,9 @@ export async function guardarYAbrirWhatsApp({
   }
 
   // El usuario pudo cerrar la pestaña de espera mientras se guardaba.
-  if (!pestana || pestana.closed) return { ok: true, whatsappAbierto: false };
-  return { ok: true, whatsappAbierto: navegarAWhatsApp(pestana, waHref) };
+  if (!pestana || pestana.closed) return { ok: true, whatsappAbierto: false, guardado };
+  const destino = typeof waHref === "function" ? waHref(guardado) : waHref;
+  return { ok: true, whatsappAbierto: navegarAWhatsApp(pestana, destino), guardado };
 }
 
 // Manda la pestaña de espera a WhatsApp. Si el navegador no lo permite, la cierra (para no

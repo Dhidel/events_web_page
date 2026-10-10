@@ -31,6 +31,10 @@ export interface DetalleCotizador {
 // El mensaje es apto para mostrarse al usuario.
 export class SeleccionInvalidaError extends Error {}
 
+// Redondea a centavos. Sin esto, la aritmética de punto flotante deja montos como
+// 0.30000000000000004 (0.1 × 3) cuando un precio tiene decimales.
+export const redondearMonto = (monto: number) => Math.round((monto + Number.EPSILON) * 100) / 100;
+
 // Cálculo puro del estimado: cantidad × precio de cada servicio, sumado. Las líneas con
 // cantidad 0 se descartan. Lanza SeleccionInvalidaError si algo no se puede cotizar.
 export function calcularEstimado(servicios: ServicioConPrecio[], seleccion: PersonajeSeleccionado[]): DetalleCotizador {
@@ -55,13 +59,13 @@ export function calcularEstimado(servicios: ServicioConPrecio[], seleccion: Pers
       nombre: servicio.nombre,
       cantidad,
       precioUnitario: servicio.precio,
-      subtotal: cantidad * servicio.precio,
+      subtotal: redondearMonto(cantidad * servicio.precio),
     });
   }
 
   if (personajes.length === 0) throw new SeleccionInvalidaError("Selecciona al menos un personaje.");
 
-  const total = personajes.reduce((suma, linea) => suma + linea.subtotal, 0);
+  const total = redondearMonto(personajes.reduce((suma, linea) => suma + linea.subtotal, 0));
   return { personajes, total };
 }
 

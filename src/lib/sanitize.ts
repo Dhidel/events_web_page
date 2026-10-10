@@ -1,9 +1,12 @@
+// Quita etiquetas HTML de un texto. Solo cuenta como etiqueta un "<" seguido de una letra,
+// "/", "!" o "?" (así empiezan las etiquetas, comentarios y declaraciones): un "<" suelto,
+// como en "Juan <3 María" o "menos de < 50 invitados", es texto y se conserva.
 export function sanitizeText(input: string): string {
   if (!input) return "";
 
   return input
     .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, "")
-    .replace(/<\/?[^>]+(>|$)/g, "")
+    .replace(/<[a-zA-Z\/!?][^>]*(>|$)/g, "")
     .trim();
 }
 

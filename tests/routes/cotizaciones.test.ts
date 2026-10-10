@@ -186,3 +186,66 @@ describe("POST /api/cotizaciones — MongoDB caído", () => {
     }
   });
 });
+
+describe("POST /api/cotizaciones — spam y duplicados", () => {
+  const solicitud = { ...contacto, origen: "contacto", mensaje: "Quiero cotizar una boda" };
+
+  function postDesde(ip: string, body: unknown) {
+    return app.handle(
+      new Request("http://localhost/api/cotizaciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Forwarded-For": ip },
+        body: JSON.stringify(body),
+      })
+    );
+  }
+
+  test("la misma solicitud enviada dos veces se guarda una sola vez (y devuelve la misma)", async () => {
+    const primera = await (await post(solicitud)).json();
+    const segunda = await post(solicitud);
+    expect(segunda.status).toBe(201);
+    expect((await segunda.json()).id).toBe(primera.id);
+    expect(await Solicitud.countDocuments()).toBe(1);
+  });
+
+  test("la misma cotización del cotizador tampoco se duplica", async () => {
+    const servicio = await Servicio.create({ nombre: "Zanquero", descripcion: "x", categoria: "Zanqueros", precio: 2500 });
+    const cotizacion = { ...contacto, origen: "cotizador", detalleCotizador: { personajes: [{ servicioId: servicio.id, cantidad: 2 }] } };
+    await post(cotizacion);
+    await post(cotizacion);
+    expect(await Solicitud.countDocuments()).toBe(1);
+
+    // Otra selección sí es otra cotización.
+    await post({ ...cotizacion, detalleCotizador: { personajes: [{ servicioId: servicio.id, cantidad: 3 }] } });
+    expect(await Solicitud.countDocuments()).toBe(2);
+  });
+
+  test("un dato distinto (otro mensaje, otro teléfono) sí crea otra solicitud", async () => {
+    await post(solicitud);
+    await post({ ...solicitud, mensaje: "Otra consulta" });
+    await post({ ...solicitud, telefono: "4444-1234" });
+    expect(await Solicitud.countDocuments()).toBe(3);
+  });
+
+  test("una solicitud idéntica pero vieja (fuera de la ventana) sí se guarda de nuevo", async () => {
+    const primera = await (await post(solicitud)).json();
+    await Solicitud.collection.updateOne(
+      { _id: new Types.ObjectId(primera.id as string) },
+      { $set: { createdAt: new Date(Date.now() - 60 * 60 * 1000) } }
+    );
+    await post(solicitud);
+    expect(await Solicitud.countDocuments()).toBe(2);
+  });
+
+  test("más de 5 envíos seguidos desde la misma IP responden 429; otra IP no se ve afectada", async () => {
+    for (let i = 0; i < 5; i++) {
+      expect((await postDesde("203.0.113.50", { ...solicitud, mensaje: `Consulta ${i}` })).status).toBe(201);
+    }
+    const bloqueada = await postDesde("203.0.113.50", { ...solicitud, mensaje: "Consulta 6" });
+    expect(bloqueada.status).toBe(429);
+    expect((await bloqueada.json()).error).toContain("Espera unos minutos");
+    expect(await Solicitud.countDocuments()).toBe(5);
+
+    expect((await postDesde("203.0.113.51", { ...solicitud, mensaje: "Desde otra IP" })).status).toBe(201);
+  });
+});

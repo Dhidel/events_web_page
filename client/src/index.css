@@ -566,12 +566,15 @@
   .cotiz-counter-confirmado{border-top-color:var(--wa);}
 
   .cotiz-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface);}
-  .cotiz-table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px;}
+  .cotiz-table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:940px;}
   .cotiz-table th{text-align:left;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:14px 16px;border-bottom:1px solid var(--line);white-space:nowrap;}
   .cotiz-table td{padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:middle;}
   .cotiz-table tr:last-child td{border-bottom:none;}
   .cotiz-name{font-weight:700;color:var(--ink);}
   .cotiz-email{font-size:12px;color:var(--muted);margin-top:2px;}
+  .cotiz-detalle{min-width:200px;}
+  .cotiz-detalle strong{font-weight:800;color:var(--ink);}
+  .cotiz-detalle ul{list-style:none;margin:4px 0 0;padding:0;font-size:12px;line-height:1.5;color:var(--muted);}
   .cotiz-reveal{margin-left:0;padding:11px 10px;border:0;background:none;font:inherit;font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer;}
   .cotiz-estado-cell{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .cotiz-badge{display:inline-block;font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap;}
@@ -641,10 +644,31 @@
   /* Sin hover (táctil) el aviso de la miniatura se muestra siempre. */
   @media (hover:none){.gallery-admin-thumb-hint{opacity:1;}}
 
-  /* Bandeja de cotizaciones en celular: cada solicitud como tarjeta, sin scroll horizontal. */
-  .cotiz-name,.cotiz-email{overflow-wrap:anywhere;}
-  @media(max-width:760px){
+  /* Bandeja de cotizaciones en celular y tablet: cada solicitud como tarjeta, sin scroll horizontal. */
+  /* En tabla, nombre, correo, teléfono y fechas van en una sola línea; la página de cotizaciones es más ancha para que quepan. */
+  .admin-dash-wide{max-width:1480px;}
+  .cotiz-compact-only{display:none;}
+  .cotiz-sub{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;}
+  /* Tabla (más de 1024px): se ajusta al ancho disponible, sin scroll horizontal. La columna del nombre
+     absorbe el espacio sobrante y corta con "…" solo si de verdad no cabe. */
+  @media(min-width:1025px){
     .cotiz-table{min-width:0;}
+    .cotiz-table th,.cotiz-table td{padding-left:12px;padding-right:12px;}
+    .cotiz-table th:first-child,.cotiz-table td:first-child{padding-left:18px;}
+    .cotiz-table td:first-child{width:30%;max-width:0;}
+    .cotiz-name,.cotiz-email{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .cotiz-nowrap{white-space:nowrap;}
+    .cotiz-estado-cell{flex-direction:column;align-items:flex-start;gap:6px;}
+  }
+  /* Pantallas medianas: fecha del evento y origen pasan debajo de sus columnas vecinas para dejarle sitio al nombre. */
+  @media(min-width:1025px) and (max-width:1439px){
+    .cotiz-table .cotiz-wide-only{display:none;}
+    .cotiz-table .cotiz-compact-only{display:block;}
+    .cotiz-detalle{min-width:170px;}
+  }
+  @media(max-width:1024px){
+    .cotiz-table{min-width:0;}
+    .cotiz-name,.cotiz-email{overflow-wrap:anywhere;}
     .cotiz-table thead{display:none;}
     .cotiz-table,.cotiz-table tbody,.cotiz-table tr,.cotiz-table td{display:block;width:100%;}
     .cotiz-table tr{padding:12px 16px;border-bottom:1px solid var(--line);}
@@ -654,6 +678,16 @@
     .cotiz-table td:first-child{display:block;text-align:left;padding-bottom:8px;}
     .cotiz-table td:first-child::before{content:none;}
     .cotiz-estado-cell{justify-content:flex-end;}
+    .cotiz-detalle{min-width:0;}
   }
   /* El botón del menú móvil conserva el relleno de .btn (la regla de enlaces del nav se lo quitaba). */
   .nav-links.open .mobile-only-cta{padding:13px 24px;}
+
+  /* Flecha propia para los desplegables: la nativa quedaba pegada al borde del recuadro. */
+  select,.quoter-contact select{
+    -webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%23F5F6FA' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 14px center;background-size:12px 8px;
+    padding-right:38px;
+  }
+  .cotiz-select{background-position:right 10px center;padding-right:32px;}

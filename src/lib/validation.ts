@@ -3,6 +3,16 @@ import { ApiError } from "./errors";
 
 // Utilidades de validación compartidas por las rutas ([14.1]).
 
+// Reglas de contacto. Son las mismas que aplica el frontend antes de enviar
+// (client/src/lib/validators.ts): si se cambia una, hay que cambiar la otra, o el formulario
+// deja pasar datos que aquí se rechazan.
+export const NOMBRE_MIN = 2;
+export const NOMBRE_MAX = 120;
+export const CORREO_MAX = 150;
+// Teléfono: "+" opcional, luego dígitos, espacios, paréntesis, puntos o guiones (7 a 20
+// caracteres) con al menos 7 dígitos. Acepta "5555-1234", "+502 5555 1234", "+1 (555) 123-4567".
+export const PHONE_REGEX = /^(?=(?:\D*\d){7})[+]?[\d\s().-]{7,20}$/;
+
 // Texto libre que se guarda o se muestra: al menos un carácter que no sea espacio
 // (rechaza "   ") y un largo máximo. El trim y la limpieza de HTML los hace sanitizeText
 // (src/lib/sanitize.ts) en la capa de servicios antes de guardar.

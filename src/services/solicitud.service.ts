@@ -14,6 +14,10 @@ export interface CrearSolicitudInput {
   detalleCotizador?: Record<string, unknown>;
 }
 
+// Una solicitud idéntica a otra dentro de esta ventana se trata como reenvío (doble clic,
+// "Reintentar" después de un timeout que sí había guardado, recarga del formulario).
+export const VENTANA_DUPLICADOS_MS = 10 * 60 * 1000;
+
 export async function crearSolicitud(data: CrearSolicitudInput) {
   const sanitizedData: CrearSolicitudInput = {
     nombre: sanitizeText(data.nombre),
@@ -25,6 +29,22 @@ export async function crearSolicitud(data: CrearSolicitudInput) {
     origen: data.origen,
     detalleCotizador: data.detalleCotizador ? sanitizeInput(data.detalleCotizador) : undefined,
   };
+
+  // Reenvío de la misma solicitud: se devuelve la ya guardada, sin crear otra ni mandar otro
+  // correo. Los campos opcionales ausentes se comparan con null (que también cubre "no existe").
+  // El detalle lo arma el servidor siempre en el mismo orden, así que la igualdad exacta sirve.
+  const duplicada = await Solicitud.findOne({
+    nombre: sanitizedData.nombre,
+    telefono: sanitizedData.telefono,
+    correo: sanitizedData.correo,
+    tipoEvento: sanitizedData.tipoEvento ?? null,
+    mensaje: sanitizedData.mensaje ?? null,
+    fechaEvento: sanitizedData.fechaEvento ?? null,
+    origen: sanitizedData.origen,
+    detalleCotizador: sanitizedData.detalleCotizador ?? null,
+    createdAt: { $gte: new Date(Date.now() - VENTANA_DUPLICADOS_MS) },
+  }).sort({ createdAt: -1 });
+  if (duplicada) return duplicada;
 
   const nuevaSolicitud = await Solicitud.create({ ...sanitizedData, estado: "nuevo" });
 

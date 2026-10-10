@@ -2,7 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
 import { EVENT_TYPES } from "../data/eventTypes";
-import { isNameValid, isPhoneValid, isEmailValid } from "../lib/validators";
+import {
+  isNameValid,
+  isPhoneValid,
+  isEmailValid,
+  CORREO_MAX,
+  MENSAJE_CORREO,
+  MENSAJE_NOMBRE,
+  MENSAJE_TELEFONO,
+  NOMBRE_MAX,
+  TELEFONO_MAX,
+} from "../lib/validators";
 import { fetchServicios, submitCotizacion, type Servicio } from "../lib/api";
 import { guardarYAbrirWhatsApp } from "../lib/whatsapp";
 
@@ -60,6 +70,8 @@ export default function Cotizador() {
 
   const updateContact = (field: ContactField, value: string) => {
     setContact((c) => ({ ...c, [field]: value }));
+    // Corregir un dato después de guardar es otra solicitud: se puede volver a confirmar.
+    setConfirmacion((c) => (c.estado === "guardada" ? { estado: "inicial" } : c));
     setContactErrors((prev) => {
       if (!prev[field]) return prev;
       const stillInvalid =
@@ -97,9 +109,9 @@ export default function Cotizador() {
     if (guardandoRef.current) return;
 
     const nextErrors: ContactState = {
-      name: isNameValid(contact.name) ? "" : "Ingresa tu nombre.",
-      phone: isPhoneValid(contact.phone) ? "" : "Ingresa un teléfono válido.",
-      email: isEmailValid(contact.email) ? "" : "Ingresa un correo válido.",
+      name: isNameValid(contact.name) ? "" : MENSAJE_NOMBRE,
+      phone: isPhoneValid(contact.phone) ? "" : MENSAJE_TELEFONO,
+      email: isEmailValid(contact.email) ? "" : MENSAJE_CORREO,
     };
     setContactErrors(nextErrors);
     if (nextErrors.name || nextErrors.phone || nextErrors.email) return;
@@ -250,6 +262,7 @@ export default function Cotizador() {
                       <input
                         type="text"
                         placeholder="Nombre completo"
+                        maxLength={NOMBRE_MAX}
                         value={contact.name}
                         onChange={(e) => updateContact("name", e.target.value)}
                       />
@@ -258,7 +271,8 @@ export default function Cotizador() {
                     <div>
                       <input
                         type="tel"
-                        placeholder="WhatsApp / Teléfono"
+                        placeholder="Teléfono"
+                        maxLength={TELEFONO_MAX}
                         value={contact.phone}
                         onChange={(e) => updateContact("phone", e.target.value)}
                       />
@@ -268,12 +282,19 @@ export default function Cotizador() {
                       <input
                         type="email"
                         placeholder="Correo electrónico"
+                        maxLength={CORREO_MAX}
                         value={contact.email}
                         onChange={(e) => updateContact("email", e.target.value)}
                       />
                       {contactErrors.email && <span className="field-error">{contactErrors.email}</span>}
                     </div>
-                    <select value={eventType} onChange={(e) => setEventType(e.target.value)}>
+                    <select
+                      value={eventType}
+                      onChange={(e) => {
+                        setEventType(e.target.value);
+                        setConfirmacion((c) => (c.estado === "guardada" ? { estado: "inicial" } : c));
+                      }}
+                    >
                       {EVENT_TYPES.map((opt) => (
                         <option key={opt}>{opt}</option>
                       ))}
@@ -305,11 +326,15 @@ export default function Cotizador() {
                       <svg><use href="#i-whatsapp" /></svg>Continuar por WhatsApp de todas formas
                     </a>
                   </div>
-                ) : hasSelection && confirmacion.estado === "guardada" && !confirmacion.whatsappAbierto ? (
-                  // Guardada, pero el navegador no dejó abrir/navegar la pestaña: el usuario la abre
-                  // con un clic directo (en vez de volver a confirmar y duplicar la solicitud).
+                ) : hasSelection && confirmacion.estado === "guardada" ? (
+                  // Ya guardada: en vez de "Confirmar" (un segundo clic duplicaría la solicitud) queda
+                  // un enlace directo a WhatsApp, que también sirve si el navegador no abrió la pestaña.
+                  // Cambiar la selección o los datos vuelve a mostrar "Confirmar".
                   <>
-                    <p className="quoter-success" role="status">¡Listo! Guardamos tu cotización. Continúa en WhatsApp:</p>
+                    <p className="quoter-success" role="status">
+                      ¡Listo! Guardamos tu cotización.{" "}
+                      {confirmacion.whatsappAbierto ? "¿No se abrió WhatsApp?" : "Continúa en WhatsApp:"}
+                    </p>
                     <a
                       href={waHref}
                       target="_blank"
@@ -321,26 +346,16 @@ export default function Cotizador() {
                     </a>
                   </>
                 ) : hasSelection ? (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      style={{ width: "100%", justifyContent: "center", marginTop: "16px" }}
-                      onClick={handleConfirm}
-                      disabled={guardando}
-                    >
-                      <svg><use href="#i-whatsapp" /></svg>
-                      {guardando ? "Guardando tu cotización…" : "Confirmar este estimado por WhatsApp"}
-                    </button>
-                    {confirmacion.estado === "guardada" && (
-                      <p className="quoter-success" role="status">
-                        ¡Listo! Guardamos tu cotización. ¿No se abrió WhatsApp?{" "}
-                        <a href={waHref} target="_blank" rel="noreferrer">
-                          Abrir WhatsApp
-                        </a>
-                      </p>
-                    )}
-                  </>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ width: "100%", justifyContent: "center", marginTop: "16px" }}
+                    onClick={handleConfirm}
+                    disabled={guardando}
+                  >
+                    <svg><use href="#i-whatsapp" /></svg>
+                    {guardando ? "Guardando tu cotización…" : "Confirmar este estimado por WhatsApp"}
+                  </button>
                 ) : (
                   <>
                     <button type="button" className="btn btn-primary" disabled style={{ width: "100%", justifyContent: "center", marginTop: "26px" }}>

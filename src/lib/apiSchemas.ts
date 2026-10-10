@@ -26,6 +26,7 @@ export const ErrorSchemas = {
   401: errorSchema("Falta el token, es inválido o expiró.", "No autorizado."),
   404: errorSchema("El recurso con ese id no existe.", "Solicitud no encontrada."),
   422: errorSchema("Datos inválidos o faltantes (nombra los campos con problema).", "Datos inválidos o faltantes: correo."),
+  429: errorSchema("Demasiadas solicitudes seguidas desde la misma IP.", "Recibimos varias solicitudes seguidas desde tu conexión. Espera unos minutos e intenta de nuevo."),
   500: errorSchema("Error inesperado. Nunca incluye detalles internos.", GENERIC_ERROR),
   502: errorSchema("Falló el servicio externo de imágenes (Cloudinary).", "No se pudo procesar la imagen. Intenta de nuevo."),
 };

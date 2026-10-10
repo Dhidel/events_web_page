@@ -109,6 +109,26 @@ export async function adminFetch(path: string, init: RequestInit = {}): Promise<
   return res;
 }
 
+// La API nombra los campos rechazados con su nombre interno ("Datos inválidos o faltantes:
+// telefono."). Los formularios ya validan con las mismas reglas, así que esto casi no se ve;
+// si pasa, se traduce a algo que el visitante entienda.
+const CAMPOS_LEGIBLES: Record<string, string> = {
+  nombre: "nombre",
+  telefono: "teléfono",
+  correo: "correo",
+  tipoEvento: "tipo de evento",
+  mensaje: "mensaje",
+  fechaEvento: "fecha del evento",
+  detalleCotizador: "personajes seleccionados",
+};
+
+export function mensajeLegible(error: string): string {
+  const campos = /^Datos inválidos o faltantes: (.+)\.$/.exec(error)?.[1];
+  if (!campos) return error;
+  const nombres = campos.split(", ").map((campo) => CAMPOS_LEGIBLES[campo] ?? campo);
+  return `Revisa estos datos e intenta de nuevo: ${nombres.join(", ")}.`;
+}
+
 // Endpoint público que usan el formulario de Contacto y el Cotizador al confirmar.
 export async function submitCotizacion(payload: CotizacionPayload, signal?: AbortSignal): Promise<Solicitud> {
   const res = await fetch(`${API_BASE}/api/cotizaciones`, {
@@ -117,6 +137,6 @@ export async function submitCotizacion(payload: CotizacionPayload, signal?: Abor
     body: JSON.stringify(payload),
     signal,
   });
-  if (!res.ok) throw new Error(await readError(res, "No se pudo enviar la solicitud."));
+  if (!res.ok) throw new Error(mensajeLegible(await readError(res, "No se pudo enviar la solicitud.")));
   return res.json();
 }

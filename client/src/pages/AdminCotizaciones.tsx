@@ -35,6 +35,25 @@ function formatFechaEvento(fecha: string): string {
   return new Date(y, m - 1, d).toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+interface LineaCotizada {
+  nombre: string;
+  cantidad: number;
+  subtotal: number;
+}
+
+const formatQ = (monto: number) => `Q${monto.toLocaleString("es-GT")}`;
+
+// Lo que el cliente armó en el Cotizador (lo calcula el servidor al guardar). Llega como objeto
+// libre, así que se lee con cuidado: una solicitud vieja o de Contacto no lo trae.
+function leerCotizacion(detalle: Solicitud["detalleCotizador"]): { lineas: LineaCotizada[]; total: number } | null {
+  if (!detalle || !Array.isArray(detalle.personajes) || typeof detalle.total !== "number") return null;
+  const lineas = (detalle.personajes as Partial<LineaCotizada>[]).filter(
+    (l): l is LineaCotizada =>
+      typeof l?.nombre === "string" && typeof l.cantidad === "number" && typeof l.subtotal === "number"
+  );
+  return { lineas, total: detalle.total };
+}
+
 export default function AdminCotizaciones() {
   const navigate = useNavigate();
   const [items, setItems] = useState<Solicitud[]>([]);
@@ -119,7 +138,7 @@ export default function AdminCotizaciones() {
   };
 
   return (
-    <div className="admin-dash">
+    <div className="admin-dash admin-dash-wide">
       <header className="admin-dash-head">
         <div className="admin-dash-head-brand">
           <img src={logo} alt="Show Company" />
@@ -193,9 +212,10 @@ export default function AdminCotizaciones() {
               <tr>
                 <th>Nombre</th>
                 <th>Teléfono</th>
+                <th>Cotización</th>
                 <th>Tipo de evento</th>
-                <th>Fecha del evento</th>
-                <th>Origen</th>
+                <th className="cotiz-wide-only">Fecha del evento</th>
+                <th className="cotiz-wide-only">Origen</th>
                 <th>Recibida</th>
                 <th>Estado</th>
               </tr>
@@ -203,29 +223,52 @@ export default function AdminCotizaciones() {
             <tbody>
               {filteredItems.map((item) => {
                 const isRevealed = revealed.has(item.id);
+                const cotizacion = leerCotizacion(item.detalleCotizador);
                 return (
                 <tr key={item.id}>
                   <td>
-                    <div className="cotiz-name">{item.nombre}</div>
+                    <div className="cotiz-name" title={item.nombre}>{item.nombre}</div>
                     <div className="cotiz-email">{isRevealed ? item.correo : maskEmail(item.correo)}</div>
                   </td>
                   <td data-label="Teléfono">
-                    <span>
+                    <span className="cotiz-nowrap">
                       {isRevealed ? item.telefono : maskPhone(item.telefono)}
                       <button type="button" className="cotiz-reveal" onClick={() => toggleReveal(item.id)}>
                         {isRevealed ? "Ocultar" : "Ver"}
                       </button>
                     </span>
                   </td>
-                  <td data-label="Tipo de evento">{item.tipoEvento || "—"}</td>
-                  <td data-label="Fecha del evento">{item.fechaEvento ? formatFechaEvento(item.fechaEvento) : "—"}</td>
-                  <td data-label="Origen">{ORIGEN_LABEL[item.origen]}</td>
-                  <td data-label="Recibida">
+                  <td data-label="Cotización">
+                    {cotizacion ? (
+                      <div className="cotiz-detalle">
+                        <strong>{formatQ(cotizacion.total)}</strong>
+                        <ul>
+                          {cotizacion.lineas.map((l) => (
+                            <li key={l.nombre}>
+                              {l.cantidad}× {l.nombre} · {formatQ(l.subtotal)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td data-label="Tipo de evento">
+                    {item.tipoEvento || "—"}
+                    {item.fechaEvento && (
+                      <span className="cotiz-sub cotiz-compact-only">{formatFechaEvento(item.fechaEvento)}</span>
+                    )}
+                  </td>
+                  <td data-label="Fecha del evento" className="cotiz-nowrap cotiz-wide-only">{item.fechaEvento ? formatFechaEvento(item.fechaEvento) : "—"}</td>
+                  <td data-label="Origen" className="cotiz-wide-only">{ORIGEN_LABEL[item.origen]}</td>
+                  <td data-label="Recibida" className="cotiz-nowrap">
                     {new Date(item.createdAt).toLocaleDateString("es-GT", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
                     })}
+                    <span className="cotiz-sub cotiz-compact-only">{ORIGEN_LABEL[item.origen]}</span>
                   </td>
                   <td data-label="Estado">
                     <div className="cotiz-estado-cell">

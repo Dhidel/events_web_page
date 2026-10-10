@@ -2,7 +2,17 @@ import { useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import aveTematico from "../assets/img/ave-tematico.jpg";
 import { EVENT_TYPES } from "../data/eventTypes";
-import { isNameValid, isPhoneValid, isEmailValid } from "../lib/validators";
+import {
+  isNameValid,
+  isPhoneValid,
+  isEmailValid,
+  CORREO_MAX,
+  MENSAJE_CORREO,
+  MENSAJE_NOMBRE,
+  MENSAJE_TELEFONO,
+  NOMBRE_MAX,
+  TELEFONO_MAX,
+} from "../lib/validators";
 import { submitCotizacion } from "../lib/api";
 
 const FAQS = [
@@ -63,9 +73,9 @@ export default function Contacto() {
     if (submittingRef.current) return;
 
     const nextErrors: ContactErrors = {
-      name: isNameValid(form.name) ? "" : "Por favor ingresa tu nombre.",
-      phone: isPhoneValid(form.phone) ? "" : "Ingresa un teléfono válido (solo números, espacios, + o -).",
-      email: isEmailValid(form.email) ? "" : "Ingresa un correo electrónico válido.",
+      name: isNameValid(form.name) ? "" : MENSAJE_NOMBRE,
+      phone: isPhoneValid(form.phone) ? "" : MENSAJE_TELEFONO,
+      email: isEmailValid(form.email) ? "" : MENSAJE_CORREO,
     };
     setErrors(nextErrors);
 
@@ -169,6 +179,7 @@ export default function Contacto() {
               <input
                 type="text"
                 placeholder="Nombre completo"
+                maxLength={NOMBRE_MAX}
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
               />
@@ -178,6 +189,7 @@ export default function Contacto() {
               <input
                 type="tel"
                 placeholder="WhatsApp / Teléfono directo"
+                maxLength={TELEFONO_MAX}
                 value={form.phone}
                 onChange={(e) => updateField("phone", e.target.value)}
               />
@@ -187,6 +199,7 @@ export default function Contacto() {
               <input
                 type="email"
                 placeholder="Correo electrónico corporativo o personal"
+                maxLength={CORREO_MAX}
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
               />
@@ -206,6 +219,7 @@ export default function Contacto() {
             <textarea
               className="full"
               placeholder="Cuéntanos más detalles sobre tu evento..."
+              maxLength={2000}
               value={form.details}
               onChange={(e) => setForm({ ...form, details: e.target.value })}
             />

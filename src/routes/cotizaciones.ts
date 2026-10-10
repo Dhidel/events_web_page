@@ -2,7 +2,8 @@ import { Elysia, t } from "elysia";
 import { SOLICITUD_ORIGENES } from "../models/Solicitud";
 import { errorResponses, SolicitudSchema, toApi } from "../lib/apiSchemas";
 import { ApiError } from "../lib/errors";
-import { rechazarCamposExtra, textoLibre } from "../lib/validation";
+import { CORREO_MAX, NOMBRE_MAX, NOMBRE_MIN, PHONE_REGEX, rechazarCamposExtra, textoLibre } from "../lib/validation";
+import { crearLimite, ipDelCliente, MAX_SOLICITUDES_POR_IP, VENTANA_SOLICITUDES_MS } from "../lib/limiteSolicitudes";
 import { crearSolicitud } from "../services/solicitud.service";
 import {
   MAX_CANTIDAD_POR_SERVICIO,
@@ -10,8 +11,8 @@ import {
   SeleccionInvalidaError,
 } from "../services/cotizador.service";
 
-// Teléfono: admite dígitos, +, -, espacios y paréntesis (mínimo 7 caracteres)
-const PHONE_REGEX = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{6,20}$/;
+// Freno contra spam: máximo de envíos por IP en una ventana de tiempo (ver lib/limiteSolicitudes.ts).
+const permitirEnvio = crearLimite({ max: MAX_SOLICITUDES_POR_IP, ventanaMs: VENTANA_SOLICITUDES_MS });
 
 // Lo que manda el Cotizador. Solo servicioId y cantidad se usan; nombre, subtotal y
 // total se aceptan (el frontend los manda) pero el servidor los recalcula con MongoDB.
@@ -36,13 +37,13 @@ const DetalleCotizadorBody = t.Object(
 
 const CotizacionBody = t.Object(
   {
-    nombre: textoLibre(120, { minLength: 2, description: "Nombre del cliente o empresa" }),
+    nombre: textoLibre(NOMBRE_MAX, { minLength: NOMBRE_MIN, description: "Nombre del cliente o empresa" }),
     telefono: t.RegExp(PHONE_REGEX, {
-      description: "Teléfono de contacto válido (7 a 20 dígitos/caracteres válidos)",
+      description: "Teléfono de contacto: 7 a 20 caracteres (dígitos, espacios, +, -, paréntesis o puntos) con al menos 7 dígitos",
     }),
     correo: t.String({
       format: "email",
-      maxLength: 150,
+      maxLength: CORREO_MAX,
       description: "Correo electrónico con formato válido",
     }),
     tipoEvento: t.Optional(
@@ -83,7 +84,12 @@ function esFechaReal(fecha: string): boolean {
 // Endpoint público: lo usan el formulario de Contacto y el Cotizador al confirmar.
 export const cotizacionesRoutes = new Elysia().post(
   "/api/cotizaciones",
-  async ({ body, set }) => {
+  async ({ body, set, request, server }) => {
+    const ip = ipDelCliente(request, server?.requestIP(request)?.address);
+    if (ip && !permitirEnvio(ip)) {
+      throw new ApiError(429, "Recibimos varias solicitudes seguidas desde tu conexión. Espera unos minutos e intenta de nuevo.");
+    }
+
     const { detalleCotizador, ...datos } = body;
 
     if (datos.fechaEvento && !esFechaReal(datos.fechaEvento)) {
@@ -111,7 +117,7 @@ export const cotizacionesRoutes = new Elysia().post(
     parse: "json",
     body: CotizacionBody,
     transform: rechazarCamposExtra(CotizacionBody),
-    response: { 201: SolicitudSchema, ...errorResponses(400, 422, 500) },
+    response: { 201: SolicitudSchema, ...errorResponses(400, 422, 429, 500) },
     detail: {
       tags: ["Público"],
       summary: "Enviar una solicitud de cotización",
@@ -120,7 +126,8 @@ export const cotizacionesRoutes = new Elysia().post(
         "Con `origen: \"cotizador\"`, `detalleCotizador.personajes` es obligatorio (cantidades enteras de 0 a " +
         `${MAX_CANTIDAD_POR_SERVICIO}). El servidor recalcula nombres, subtotales y total con los precios actuales de MongoDB e ignora los que manda el cliente. ` +
         "Responde 422 si un servicio no existe o está inactivo. Con `origen: \"contacto\"` el detalle se descarta.\n\n" +
-        "No se aceptan campos que no estén en el esquema (422 \"Campos no permitidos: ...\").",
+        "No se aceptan campos que no estén en el esquema (422 \"Campos no permitidos: ...\").\n\n" +
+        `Contra spam y duplicados: más de ${MAX_SOLICITUDES_POR_IP} envíos desde la misma IP en ${VENTANA_SOLICITUDES_MS / 60000} minutos responden 429, y una solicitud idéntica a otra reciente no se guarda de nuevo (devuelve la que ya existe).`,
     },
   }
 );

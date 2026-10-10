@@ -221,7 +221,7 @@ export default function Cotizador() {
             </div>
 
             <div>
-              <div style={{ background: "var(--navy)", borderRadius: "20px", padding: "32px", color: "#fff", position: "sticky", top: "110px" }}>
+              <div className="quoter-panel">
                 <span className="eyebrow" style={{ color: "var(--blue-light)" }}><svg><use href="#i-sparkle" /></svg>Tu estimado</span>
                 <div style={{ fontSize: "42px", fontWeight: 900, margin: "10px 0 4px" }}>Q {total.toLocaleString("es-GT")}</div>
                 <p style={{ color: "rgba(255,255,255,.5)", fontSize: "12.5px", marginBottom: "24px" }}>
@@ -361,7 +361,7 @@ export default function Cotizador() {
                   </button>
                 )}
 
-                <p style={{ fontSize: "11.5px", color: "rgba(255,255,255,.4)", marginTop: "14px", lineHeight: 1.5 }}>
+                <p style={{ fontSize: "12px", color: "rgba(255,255,255,.4)", marginTop: "14px", lineHeight: 1.5 }}>
                   * Precio dentro de la Ciudad Capital. Traslado fuera de la capital, horas adicionales y montaje
                   especial se cotizan aparte con un asesor.
                 </p>

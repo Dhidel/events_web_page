@@ -163,10 +163,12 @@ export default function Servicios() {
                     <li key={inc}><svg><use href="#i-sparkle" /></svg>{inc}</li>
                   ))}
                 </ul>
-                <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Cotizar este servicio</Link>
-                {d.withCatalogLink && (
-                  <a href="#catalogo" className="btn btn-outline" style={{ marginLeft: "10px" }}>Ver catálogo con precios</a>
-                )}
+                <div className="service-detail-actions">
+                  <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Cotizar este servicio</Link>
+                  {d.withCatalogLink && (
+                    <a href="#catalogo" className="btn btn-outline">Ver catálogo con precios</a>
+                  )}
+                </div>
               </div>
             </div>
           ))}

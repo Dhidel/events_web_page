@@ -209,23 +209,25 @@ export default function AdminCotizaciones() {
                     <div className="cotiz-name">{item.nombre}</div>
                     <div className="cotiz-email">{isRevealed ? item.correo : maskEmail(item.correo)}</div>
                   </td>
-                  <td>
-                    {isRevealed ? item.telefono : maskPhone(item.telefono)}
-                    <button type="button" className="cotiz-reveal" onClick={() => toggleReveal(item.id)}>
-                      {isRevealed ? "Ocultar" : "Ver"}
-                    </button>
+                  <td data-label="Teléfono">
+                    <span>
+                      {isRevealed ? item.telefono : maskPhone(item.telefono)}
+                      <button type="button" className="cotiz-reveal" onClick={() => toggleReveal(item.id)}>
+                        {isRevealed ? "Ocultar" : "Ver"}
+                      </button>
+                    </span>
                   </td>
-                  <td>{item.tipoEvento || "—"}</td>
-                  <td>{item.fechaEvento ? formatFechaEvento(item.fechaEvento) : "—"}</td>
-                  <td>{ORIGEN_LABEL[item.origen]}</td>
-                  <td>
+                  <td data-label="Tipo de evento">{item.tipoEvento || "—"}</td>
+                  <td data-label="Fecha del evento">{item.fechaEvento ? formatFechaEvento(item.fechaEvento) : "—"}</td>
+                  <td data-label="Origen">{ORIGEN_LABEL[item.origen]}</td>
+                  <td data-label="Recibida">
                     {new Date(item.createdAt).toLocaleDateString("es-GT", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
                     })}
                   </td>
-                  <td>
+                  <td data-label="Estado">
                     <div className="cotiz-estado-cell">
                       <span className={`cotiz-badge cotiz-badge-${ESTADO_KEY[item.estado]}`}>
                         {ESTADO_LABEL[item.estado]}

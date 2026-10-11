@@ -14,6 +14,7 @@ import {
   TELEFONO_MAX,
 } from "../lib/validators";
 import { submitCotizacion } from "../lib/api";
+import CampoTrampa from "../components/CampoTrampa";
 
 const FAQS = [
   {
@@ -48,6 +49,7 @@ export default function Contacto() {
     eventType: EVENT_TYPES[0],
     date: "",
     details: "",
+    sitioWeb: "", // honeypot: siempre vacío para una persona real
   });
   const [errors, setErrors] = useState<ContactErrors>({ name: "", phone: "", email: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -96,10 +98,11 @@ export default function Contacto() {
         // El input type="date" ya entrega "YYYY-MM-DD" (o "" si no se eligió fecha).
         fechaEvento: form.date || undefined,
         origen: "contacto",
+        sitioWeb: form.sitioWeb || undefined,
       });
 
       setSubmitSuccess(true);
-      setForm({ name: "", phone: "", email: "", eventType: EVENT_TYPES[0], date: "", details: "" });
+      setForm({ name: "", phone: "", email: "", eventType: EVENT_TYPES[0], date: "", details: "", sitioWeb: "" });
     } catch (err) {
       setSubmitError((err as Error).message);
     } finally {
@@ -226,6 +229,7 @@ export default function Contacto() {
             {submitSuccess && (
               <p className="full form-success">¡Recibimos tu solicitud! Te contactaremos pronto.</p>
             )}
+            <CampoTrampa value={form.sitioWeb} onChange={(sitioWeb) => setForm({ ...form, sitioWeb })} />
             {submitError && <p className="full field-error">{submitError}</p>}
 
             <button type="submit" className="btn btn-primary" disabled={submitting}>

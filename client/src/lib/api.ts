@@ -74,9 +74,21 @@ export interface CotizacionPayload {
   fechaEvento?: string;
   origen: SolicitudOrigen;
   detalleCotizador?: Record<string, unknown>;
+  // Honeypot anti-spam: el input está oculto y una persona nunca lo llena. Solo se envía si
+  // trae texto (o sea, si lo llenó un bot).
+  sitioWeb?: string;
 }
 
 export class UnauthorizedError extends Error {}
+
+// 429: demasiadas solicitudes seguidas desde esta conexión. Lleva el mensaje del servidor;
+// el tipo propio permite a la página ofrecer WhatsApp en vez de "Reintentar".
+export class DemasiadasSolicitudesError extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "DemasiadasSolicitudesError";
+  }
+}
 
 // Extrae un mensaje legible de una respuesta con error. El backend a veces responde
 // JSON ({ error: "..." }) y a veces texto plano (errores no capturados de Elysia),
@@ -137,6 +149,11 @@ export async function submitCotizacion(payload: CotizacionPayload, signal?: Abor
     body: JSON.stringify(payload),
     signal,
   });
+  if (res.status === 429) {
+    throw new DemasiadasSolicitudesError(
+      await readError(res, "Recibimos varias solicitudes seguidas desde tu conexión. Espera unos minutos e intenta de nuevo.")
+    );
+  }
   if (!res.ok) throw new Error(mensajeLegible(await readError(res, "No se pudo enviar la solicitud.")));
   return res.json();
 }

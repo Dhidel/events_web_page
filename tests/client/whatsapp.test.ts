@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+import { DemasiadasSolicitudesError } from "../../client/src/lib/api";
 import {
   enlaceWhatsApp,
   guardarYAbrirWhatsApp,
@@ -48,6 +49,22 @@ describe("guardarYAbrirWhatsApp", () => {
     });
 
     expect(resultado).toEqual({ ok: false, error: "Ocurrió un error, intenta de nuevo." });
+    expect(pestana.close).toHaveBeenCalledTimes(1);
+    expect(pestana.location.href).toBe("about:blank");
+  });
+
+  test("429 (demasiadas solicitudes): cierra la pestaña, no abre WhatsApp y marca limite", async () => {
+    const pestana = pestanaFalsa();
+    const mensaje = "Recibimos varias solicitudes seguidas desde tu conexión. Espera unos minutos e intenta de nuevo.";
+    const resultado = await guardarYAbrirWhatsApp({
+      waHref: WA,
+      guardar: async () => {
+        throw new DemasiadasSolicitudesError(mensaje);
+      },
+      abrirPestana: () => pestana as unknown as Window,
+    });
+
+    expect(resultado).toEqual({ ok: false, error: mensaje, limite: true });
     expect(pestana.close).toHaveBeenCalledTimes(1);
     expect(pestana.location.href).toBe("about:blank");
   });

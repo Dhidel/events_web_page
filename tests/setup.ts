@@ -16,6 +16,12 @@ mock.module("../src/lib/cloudinary", () => moduloCloudinaryFalso);
 // Las rutas admin firman/verifican JWT; si no hay .env (p. ej. en CI) se usa uno de prueba.
 process.env.JWT_SECRET ??= "secreto-solo-para-pruebas";
 
+// Anti-spam ([14.3]): las pruebas simulan la IP del cliente con X-Forwarded-For, como lo hace
+// el proxy de un hosting. src/lib/limiteSolicitudes.ts lee esto al cargarse, por eso se
+// importa más abajo con import() dinámico (los import estáticos corren antes que esta línea).
+process.env.TRUST_PROXY_HOPS = "1";
+delete process.env.CLIENT_IP_HEADER;
+
 // Las pruebas corren contra un MongoDB temporal en memoria, nunca contra Atlas
 // (desarrollo/producción). La base se crea al arrancar la suite y se destruye al final.
 let mongo: MongoMemoryServer;
@@ -34,6 +40,9 @@ beforeAll(async () => {
 afterEach(async () => {
   resendFalso.reiniciar();
   cloudinaryFalso.reiniciar();
+  // Los contadores de los límites por IP no pasan de una prueba a otra.
+  const { reiniciarLimites } = await import("../src/lib/limiteSolicitudes");
+  reiniciarLimites();
   const collections = await mongoose.connection.db!.collections();
   await Promise.all(collections.map((c) => c.deleteMany({})));
 });

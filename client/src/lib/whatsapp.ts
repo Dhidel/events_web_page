@@ -5,9 +5,12 @@
 // Solución: abrir una pestaña en blanco en el mismo clic y, cuando responde el servidor,
 // mandarla a WhatsApp (si se guardó) o cerrarla (si falló).
 
+import { DemasiadasSolicitudesError } from "./api";
+
 export type ResultadoConfirmacion<T = unknown> =
   | { ok: true; whatsappAbierto: boolean; guardado: T }
-  | { ok: false; error: string };
+  // limite: el servidor respondió 429. Reintentar enseguida volvería a fallar.
+  | { ok: false; error: string; limite?: true };
 
 const WHATSAPP_NUMERO = "50230738716";
 
@@ -96,6 +99,7 @@ export async function guardarYAbrirWhatsApp<T>({
   } catch (error) {
     // No se abre WhatsApp si la cotización no quedó guardada.
     pestana?.close();
+    if (error instanceof DemasiadasSolicitudesError) return { ok: false, error: error.message, limite: true };
     return { ok: false, error: mensajeDeError(error) };
   }
 

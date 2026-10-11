@@ -1,18 +1,17 @@
-import { Elysia, t } from "elysia";
+import { Elysia, t, type Static } from "elysia";
+import { Types } from "mongoose";
 import { SOLICITUD_ORIGENES } from "../models/Solicitud";
+import { sanitizeText } from "../lib/sanitize";
 import { errorResponses, SolicitudSchema, toApi } from "../lib/apiSchemas";
 import { ApiError } from "../lib/errors";
 import { CORREO_MAX, NOMBRE_MAX, NOMBRE_MIN, PHONE_REGEX, rechazarCamposExtra, textoLibre } from "../lib/validation";
-import { crearLimite, ipDelCliente, MAX_SOLICITUDES_POR_IP, VENTANA_SOLICITUDES_MS } from "../lib/limiteSolicitudes";
+import { limiteCotizaciones, MAX_SOLICITUDES_POR_IP, VENTANA_SOLICITUDES_MS } from "../lib/limiteSolicitudes";
 import { crearSolicitud } from "../services/solicitud.service";
 import {
   MAX_CANTIDAD_POR_SERVICIO,
   recalcularDetalleCotizador,
   SeleccionInvalidaError,
 } from "../services/cotizador.service";
-
-// Freno contra spam: máximo de envíos por IP en una ventana de tiempo (ver lib/limiteSolicitudes.ts).
-const permitirEnvio = crearLimite({ max: MAX_SOLICITUDES_POR_IP, ventanaMs: VENTANA_SOLICITUDES_MS });
 
 // Lo que manda el Cotizador. Solo servicioId y cantidad se usan; nombre, subtotal y
 // total se aceptan (el frontend los manda) pero el servidor los recalcula con MongoDB.
@@ -69,9 +68,38 @@ const CotizacionBody = t.Object(
       description: '"contacto" (formulario de Contacto) o "cotizador" (botón Confirmar del Cotizador).',
     }),
     detalleCotizador: t.Optional(DetalleCotizadorBody),
+    // Honeypot ([14.3]): declarado para que el hook de campos extra no lo rechace.
+    sitioWeb: t.Optional(
+      t.String({
+        maxLength: 200,
+        description: "Campo trampa anti-spam (honeypot). Debe ir vacío u omitido; si trae texto el envío se descarta en silencio.",
+      })
+    ),
   },
   { additionalProperties: false }
 );
+
+// Respuesta para un envío que llenó el honeypot: tiene la misma forma que una solicitud
+// guardada (id nuevo, estado "nuevo"), para que el bot no note que fue descartado. No se
+// guarda nada, no se consulta la base y no se manda correo.
+function respuestaHoneypot(datos: Omit<Static<typeof CotizacionBody>, "detalleCotizador" | "sitioWeb">) {
+  const id = new Types.ObjectId().toString();
+  const ahora = new Date();
+  return {
+    _id: id,
+    id,
+    nombre: sanitizeText(datos.nombre),
+    telefono: sanitizeText(datos.telefono),
+    correo: sanitizeText(datos.correo).toLowerCase(),
+    tipoEvento: datos.tipoEvento ? sanitizeText(datos.tipoEvento) : undefined,
+    mensaje: datos.mensaje ? sanitizeText(datos.mensaje) : undefined,
+    fechaEvento: datos.fechaEvento,
+    origen: datos.origen,
+    estado: "nuevo" as const,
+    createdAt: ahora,
+    updatedAt: ahora,
+  };
+}
 
 // Elysia convierte "2" (texto) a 2 antes de validar, así que t.Integer no lo rechaza. Aquí,
 // en `transform`, el body todavía está como llegó: las cantidades tienen que ser números.
@@ -95,15 +123,23 @@ function esFechaReal(fecha: string): boolean {
 export const cotizacionesRoutes = new Elysia().post(
   "/api/cotizaciones",
   async ({ body, set, request, server }) => {
-    const ip = ipDelCliente(request, server?.requestIP(request)?.address);
-    if (ip && !permitirEnvio(ip)) {
-      throw new ApiError(429, "Recibimos varias solicitudes seguidas desde tu conexión. Espera unos minutos e intenta de nuevo.");
-    }
+    // Freno contra spam: máximo de envíos por IP en una ventana de tiempo (429 con Retry-After;
+    // ver lib/limiteSolicitudes.ts).
+    limiteCotizaciones.verificarYRegistrar({ request, server, set });
 
-    const { detalleCotizador, ...datos } = body;
+    const { detalleCotizador, sitioWeb, ...datos } = body;
 
     if (datos.fechaEvento && !esFechaReal(datos.fechaEvento)) {
       throw new ApiError(422, "Datos inválidos o faltantes: fechaEvento.");
+    }
+
+    // Honeypot: una persona nunca ve ni llena "sitioWeb". Si viene con texto es un bot: se
+    // responde como si hubiera funcionado, sin guardar ni notificar. Va después del límite,
+    // así un bot insistente igual termina en 429. El log no lleva ningún dato del envío.
+    if (sitioWeb?.trim()) {
+      console.warn(`[Anti-spam] Envío descartado por honeypot (origen: ${datos.origen}).`);
+      set.status = 201;
+      return respuestaHoneypot(datos);
     }
 
     // El detalle solo aplica al Cotizador, y nunca se guarda lo que mandó el cliente:
@@ -137,7 +173,10 @@ export const cotizacionesRoutes = new Elysia().post(
         `${MAX_CANTIDAD_POR_SERVICIO}). El servidor recalcula nombres, subtotales y total con los precios actuales de MongoDB e ignora los que manda el cliente. ` +
         "Responde 422 si un servicio no existe o está inactivo. Con `origen: \"contacto\"` el detalle se descarta.\n\n" +
         "No se aceptan campos que no estén en el esquema (422 \"Campos no permitidos: ...\").\n\n" +
-        `Contra spam y duplicados: más de ${MAX_SOLICITUDES_POR_IP} envíos desde la misma IP en ${VENTANA_SOLICITUDES_MS / 60000} minutos responden 429, y una solicitud idéntica a otra reciente no se guarda de nuevo (devuelve la que ya existe).`,
+        `Contra spam y duplicados: más de ${MAX_SOLICITUDES_POR_IP} envíos desde la misma IP en ${VENTANA_SOLICITUDES_MS / 60000} minutos responden 429 ` +
+        "(con header `Retry-After` en segundos), y una solicitud idéntica a otra reciente no se guarda de nuevo (devuelve la que ya existe).\n\n" +
+        "`sitioWeb` es un campo trampa (honeypot): el formulario lo oculta y debe ir vacío u omitido. Si trae texto, la respuesta es un 201 " +
+        "normal pero la solicitud no se guarda ni se notifica.",
     },
   }
 );

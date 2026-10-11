@@ -49,3 +49,44 @@ los orígenes permitidos de `CORS_ORIGIN`. La lógica está en `src/lib/segurida
 - **HTTPS:** el certificado y la redirección de `http://` a `https://` los hace el hosting.
   En producción la API envía `Strict-Transport-Security: max-age=15552000` (180 días), sin
   `includeSubDomains` ni `preload` hasta confirmar el dominio final.
+
+---
+
+# [14.3] Rate limiting y anti-spam
+
+Todo vive en `src/lib/limiteSolicitudes.ts`: un contador por IP en memoria con ventana
+deslizante (`crearLimite`). Al pasarse, la API responde **429** con `{ "error": "..." }` y el
+header `Retry-After` (segundos).
+
+| Ruta | Límite por IP (por defecto) | Qué cuenta |
+|---|---|---|
+| `POST /api/cotizaciones` (Contacto y Cotizador) | 5 cada 10 min | Envíos válidos (los rechazados por validación no cuentan) |
+| `POST /api/auth/login` | 10 cada 15 min | Solo intentos **fallidos** (401). Sin límite por correo, para que nadie pueda bloquear al admin a propósito |
+
+Además, una solicitud idéntica a otra de los últimos 10 minutos no se guarda de nuevo
+(`crearSolicitud` devuelve la que ya existe).
+
+**IP del visitante** (en este orden):
+
+| Variable | Qué hace |
+|---|---|
+| `CLIENT_IP_HEADER` | Header donde el hosting pone la IP (ej. `cf-connecting-ip`, `x-real-ip`, `fly-client-ip`). Solo es seguro si el hosting lo sobrescribe siempre. |
+| `TRUST_PROXY_HOPS` | Proxies de confianza delante (por defecto `0`). Con `N > 0` se toma la entrada de `X-Forwarded-For` en la posición `largo − N`; lo que el visitante escriba a la izquierda se ignora. Con `0`, `X-Forwarded-For` se ignora y se usa la IP de la conexión. |
+| `RATE_LIMIT_COTIZACIONES_MAX` / `_VENTANA_MIN` | `5` / `10` |
+| `RATE_LIMIT_LOGIN_MAX` / `_VENTANA_MIN` | `10` / `15` |
+
+- **IPv6** se agrupa por `/64` (una conexión puede rotar direcciones dentro de ese bloque).
+- **IP desconocida:** esas peticiones comparten una cuota 10 veces mayor y el log lo avisa una vez.
+- **Al desplegar**, el log de arranque dice de dónde sale la IP y los límites. Si no hay
+  `CLIENT_IP_HEADER` ni `TRUST_PROXY_HOPS`, avisa que todos los visitantes compartirían el
+  límite. La primera petición indica si la IP detectada es pública (correcto) o de red interna
+  (es la del proxy: hay que corregir la configuración). Nunca se escribe la IP en el log.
+- **Limitaciones:** el contador vive en memoria: se reinicia al redesplegar y no se comparte
+  entre varias instancias (con varias, habría que moverlo a Redis).
+
+**Honeypot:** los formularios de Contacto y Cotizador tienen un campo oculto `sitioWeb`
+(`client/src/components/CampoTrampa.tsx`): fuera de la pantalla (no `display:none`),
+`aria-hidden`, `tabIndex=-1` y `autocomplete="off"`. Una persona nunca lo llena. Si llega con
+texto, la API responde un 201 normal pero no guarda nada, no consulta la base ni manda correo,
+y deja en el log solo `[Anti-spam] Envío descartado por honeypot (origen: ...)`. Se revisa
+después del límite, así que un bot insistente igual termina en 429.

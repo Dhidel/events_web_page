@@ -21,6 +21,7 @@ import {
   mensajeEstimado,
   redondearMonto,
 } from "../lib/whatsapp";
+import CampoTrampa from "../components/CampoTrampa";
 
 type ContactField = "name" | "phone" | "email";
 type ContactState = Record<ContactField, string>;
@@ -31,7 +32,8 @@ type Confirmacion =
   | { estado: "guardando" }
   // preciosActualizados: el servidor guardó un total distinto al que veía el cliente.
   | { estado: "guardada"; whatsappAbierto: boolean; preciosActualizados: boolean }
-  | { estado: "error"; mensaje: string };
+  // limite: el servidor respondió 429 (demasiadas solicitudes seguidas desde esta conexión).
+  | { estado: "error"; mensaje: string; limite?: boolean };
 
 // Si el backend no responde en este tiempo se trata como error (y se ofrece reintentar).
 const SAVE_TIMEOUT_MS = 15_000;
@@ -46,6 +48,7 @@ export default function Cotizador() {
   const [contactErrors, setContactErrors] = useState<ContactState>({ name: "", phone: "", email: "" });
   const [eventType, setEventType] = useState(EVENT_TYPES[0]);
   const [confirmacion, setConfirmacion] = useState<Confirmacion>({ estado: "inicial" });
+  const [sitioWeb, setSitioWeb] = useState(""); // honeypot: siempre vacío para una persona real
   // Freno síncrono contra doble clic: el estado de React se actualiza después del clic.
   const guardandoRef = useRef(false);
 
@@ -168,6 +171,7 @@ export default function Cotizador() {
               personajes: lines.map((l) => ({ servicioId: l.id, nombre: l.name, cantidad: l.qty, subtotal: l.subtotal })),
               total,
             },
+            sitioWeb: sitioWeb || undefined,
           },
           AbortSignal.timeout(SAVE_TIMEOUT_MS)
         ),
@@ -178,7 +182,7 @@ export default function Cotizador() {
     if (!resultado.ok) {
       // Puede haber fallado porque el catálogo cambió (un personaje ya no está disponible).
       refrescarCatalogo();
-      setConfirmacion({ estado: "error", mensaje: resultado.error });
+      setConfirmacion({ estado: "error", mensaje: resultado.error, limite: resultado.limite });
       return;
     }
 
@@ -348,10 +352,37 @@ export default function Cotizador() {
                         <option key={opt}>{opt}</option>
                       ))}
                     </select>
+                    <CampoTrampa value={sitioWeb} onChange={setSitioWeb} />
                   </div>
                 )}
 
-                {hasSelection && confirmacion.estado === "error" ? (
+                {hasSelection && confirmacion.estado === "error" && confirmacion.limite ? (
+                  // 429: reintentar enseguida volvería a fallar, así que WhatsApp pasa a ser la opción
+                  // principal (un enlace normal: no se abre ninguna pestaña por su cuenta).
+                  <div className="quoter-error" role="alert">
+                    <p>
+                      <strong>{confirmacion.mensaje}</strong> Mientras tanto, puedes escribirnos directo por
+                      WhatsApp con tu selección.
+                    </p>
+                    <a
+                      href={waHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-primary"
+                      style={{ width: "100%", justifyContent: "center" }}
+                    >
+                      <svg><use href="#i-whatsapp" /></svg>Continuar por WhatsApp
+                    </a>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={handleConfirm}
+                      style={{ width: "100%", justifyContent: "center" }}
+                    >
+                      Reintentar más tarde
+                    </button>
+                  </div>
+                ) : hasSelection && confirmacion.estado === "error" ? (
                   <div className="quoter-error" role="alert">
                     <p>
                       <strong>No pudimos guardar tu cotización.</strong> {confirmacion.mensaje} Tu selección sigue

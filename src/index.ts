@@ -12,6 +12,7 @@ import { adminGuard } from "./middleware/adminGuard";
 import { adminDetail, errorResponses } from "./lib/apiSchemas";
 import { errorHandler } from "./lib/errors";
 import { DEV_ORIGIN, seguridadHttp } from "./lib/seguridadHttp";
+import { describirConfiguracionIp, limiteCotizaciones, limiteLogin } from "./lib/limiteSolicitudes";
 
 await connectDB();
 
@@ -102,6 +103,17 @@ if (isProduction) {
 }
 
 app.listen(PORT);
+
+if (isProduction) {
+  // Para comprobar al desplegar cómo se obtiene la IP del visitante (anti-spam [14.3]). Con un
+  // proxy delante y sin CLIENT_IP_HEADER ni TRUST_PROXY_HOPS, todos compartirían el límite.
+  const ip = describirConfiguracionIp();
+  const limites =
+    `Límites por IP: cotizaciones ${limiteCotizaciones.max} cada ${limiteCotizaciones.ventanaMinutos} min; ` +
+    `login ${limiteLogin.max} intentos fallidos cada ${limiteLogin.ventanaMinutos} min.`;
+  if (ip.advertencia) console.warn(`⚠ [Anti-spam] REVISA LA CONFIGURACIÓN DE IP: ${ip.texto} ${limites}`);
+  else console.log(`[Anti-spam] IP del cliente: ${ip.texto}. ${limites}`);
+}
 
 console.log(
   `Servidor ejecutándose en http://localhost:${app.server?.port} (${isProduction ? "producción — sirviendo client/dist" : "desarrollo — solo API, frontend en " + DEV_ORIGIN})`

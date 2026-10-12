@@ -201,10 +201,10 @@ describe("POST /api/cotizaciones — spam y duplicados", () => {
   }
 
   test("la misma solicitud enviada dos veces se guarda una sola vez (y devuelve la misma)", async () => {
-    const primera = await (await post(solicitud)).json();
+    const primera = (await (await post(solicitud)).json()) as { id: string };
     const segunda = await post(solicitud);
     expect(segunda.status).toBe(201);
-    expect((await segunda.json()).id).toBe(primera.id);
+    expect(((await segunda.json()) as { id: string }).id).toBe(primera.id);
     expect(await Solicitud.countDocuments()).toBe(1);
   });
 
@@ -228,7 +228,7 @@ describe("POST /api/cotizaciones — spam y duplicados", () => {
   });
 
   test("una solicitud idéntica pero vieja (fuera de la ventana) sí se guarda de nuevo", async () => {
-    const primera = await (await post(solicitud)).json();
+    const primera = (await (await post(solicitud)).json()) as { id: string };
     await Solicitud.collection.updateOne(
       { _id: new Types.ObjectId(primera.id as string) },
       { $set: { createdAt: new Date(Date.now() - 60 * 60 * 1000) } }
@@ -243,7 +243,7 @@ describe("POST /api/cotizaciones — spam y duplicados", () => {
     }
     const bloqueada = await postDesde("203.0.113.50", { ...solicitud, mensaje: "Consulta 6" });
     expect(bloqueada.status).toBe(429);
-    expect((await bloqueada.json()).error).toContain("Espera unos minutos");
+    expect(((await bloqueada.json()) as { error: string }).error).toContain("Espera unos minutos");
     expect(await Solicitud.countDocuments()).toBe(5);
 
     expect((await postDesde("203.0.113.51", { ...solicitud, mensaje: "Desde otra IP" })).status).toBe(201);
@@ -267,7 +267,7 @@ describe("POST /api/cotizaciones — detalles de entrada", () => {
       mensaje: "Somos < 50 invitados <b>aprox</b><!-- oculto --> y x > y",
     });
     expect(res.status).toBe(201);
-    const guardada = await res.json();
+    const guardada = (await res.json()) as { nombre: string; mensaje: string };
     expect(guardada.nombre).toBe("Juan <3 María");
     expect(guardada.mensaje).toBe("Somos < 50 invitados aprox y x > y");
   });

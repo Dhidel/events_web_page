@@ -10,6 +10,12 @@ export const DEV_ORIGIN = "http://localhost:5173";
 // de revertir (el navegador del visitante lo recuerda).
 export const HSTS = "max-age=15552000";
 
+// Tope del body por petición ([14.4]). Lo más grande que acepta la API es la subida de una
+// imagen de la galería (10 MB) más el resto del formulario; sin tope propio, Bun acepta hasta
+// 128 MB y la API los procesaría antes de rechazarlos. Al pasarse, Bun responde 413 antes de
+// llegar a Elysia (sin el formato { error }; ver README).
+export const MAX_BODY_BYTES = 12 * 1024 * 1024;
+
 // Lo que usa el frontend (Contacto, Cotizador, login y panel admin). El JWT del panel viaja
 // en Authorization (no en cookies), por eso credentials va en false.
 const METODOS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];

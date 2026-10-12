@@ -1,6 +1,5 @@
 import { Elysia, t } from "elysia";
 import { openapi } from "@elysiajs/openapi";
-import { staticPlugin } from "@elysiajs/static";
 import { connectDB } from "./db";
 import { authRoutes } from "./routes/auth";
 import { galleryRoutes } from "./routes/gallery";
@@ -11,7 +10,8 @@ import { adminCotizacionesRoutes } from "./routes/adminCotizaciones";
 import { adminGuard } from "./middleware/adminGuard";
 import { adminDetail, errorResponses } from "./lib/apiSchemas";
 import { errorHandler } from "./lib/errors";
-import { DEV_ORIGIN, seguridadHttp } from "./lib/seguridadHttp";
+import { DEV_ORIGIN, MAX_BODY_BYTES, seguridadHttp } from "./lib/seguridadHttp";
+import { servirFrontend } from "./lib/frontend";
 import { describirConfiguracionIp, limiteCotizaciones, limiteLogin } from "./lib/limiteSolicitudes";
 
 await connectDB();
@@ -85,24 +85,12 @@ const app = new Elysia()
   .use(adminGalleryRoutes)
   .use(adminCotizacionesRoutes);
 
-if (isProduction) {
-  app
-    .use(
-      staticPlugin({
-        assets: CLIENT_DIST,
-        prefix: "/",
-        indexHTML: true,
-      })
-    )
-    // @elysiajs/static registra "" en vez de "/" para el index en Windows
-    // (usa path.sep, que ahí es "\" y no "/"), así que se agrega explícito.
-    .get("/", () => Bun.file(`${CLIENT_DIST}/index.html`))
-    // SPA fallback: cualquier ruta de React Router (/servicios, /cotizador, etc.)
-    // que no sea un archivo estático ni un endpoint /api debe servir index.html.
-    .get("/*", () => Bun.file(`${CLIENT_DIST}/index.html`));
-}
+// Producción: también sirve el frontend (ver src/lib/frontend.ts). Las rutas /api/* que no
+// existen responden 404 { error }, no la página del sitio.
+if (isProduction) app.use(servirFrontend(CLIENT_DIST));
 
-app.listen(PORT);
+// Tope del body por petición (Bun responde 413 si se pasa; ver MAX_BODY_BYTES).
+app.listen({ port: PORT, maxRequestBodySize: MAX_BODY_BYTES });
 
 if (isProduction) {
   // Para comprobar al desplegar cómo se obtiene la IP del visitante (anti-spam [14.3]). Con un

@@ -90,3 +90,33 @@ Además, una solicitud idéntica a otra de los últimos 10 minutos no se guarda 
 texto, la API responde un 201 normal pero no guarda nada, no consulta la base ni manda correo,
 y deja en el log solo `[Anti-spam] Envío descartado por honeypot (origen: ...)`. Se revisa
 después del límite, así que un bot insistente igual termina en 429.
+
+---
+
+# [14.4] Errores seguros, dependencias y type-check
+
+**Errores:** todas las respuestas de error usan el formato único `{ "error": "mensaje" }`
+(`src/lib/errors.ts`) y nunca incluyen rutas de archivos, stack traces, nombres de modelos o
+colecciones, ni mensajes de Mongo, Cloudinary, Resend o JWT. El detalle queda solo en el log
+del servidor, enmascarado con `safeErrorLog` (correos, teléfonos, credenciales de URIs, API
+keys y tokens `Bearer`).
+
+| Caso | Respuesta |
+|---|---|
+| Error inesperado | `500 {"error":"Ocurrió un error, intenta de nuevo."}` |
+| Ruta inexistente o método no permitido | `404 {"error":"Ruta no encontrada."}` (en producción también para `/api/...`; las demás rutas sirven el sitio) |
+| JSON roto | `400 {"error":"El cuerpo de la solicitud no tiene un formato válido."}` |
+| Datos inválidos | `422` nombrando solo los campos |
+| Sin sesión / token inválido o vencido | `401 {"error":"No autorizado."}` |
+| Demasiadas solicitudes | `429` con `Retry-After` (ver [14.3]) |
+| Falla de Cloudinary | `502 {"error":"No se pudo procesar la imagen. Intenta de nuevo."}` |
+| **Body de más de 12 MB** | **`413 Request Entity Too Large` sin cuerpo**: lo responde Bun antes de llegar a la API (`maxRequestBodySize`, en `src/lib/seguridadHttp.ts`), así que no lleva el formato `{ error }`. El tope cubre la imagen más grande que acepta la galería (10 MB) más el formulario. |
+
+`/swagger` no existe en producción, y el servidor no envía headers como `Server` o
+`X-Powered-By`.
+
+**Dependencias:** revisar con `bun audit` en la raíz y en `client/`.
+
+**Type-check:** `bun run typecheck` corre los tres proyectos de TypeScript: el backend
+(`src` y `tests`, con los tipos de Bun de `@types/bun`), las pruebas de código del navegador
+(`tests/client`, que agrega los tipos del DOM) y `client/` (su propio `tsc -b`).

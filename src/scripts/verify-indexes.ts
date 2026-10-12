@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { connectDB } from "../db";
+import { safeErrorLog } from "../lib/privacy";
 import { AdminUser } from "../models/AdminUser";
 import { GalleryImage } from "../models/GalleryImage";
 import { Servicio } from "../models/Servicio";
@@ -42,4 +43,4 @@ async function verify() {
   await mongoose.disconnect();
 }
 
-verify().catch(console.error);
+verify().catch((err) => console.error(safeErrorLog(err)));

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { connectDB } from "../db";
+import { safeErrorLog } from "../lib/privacy";
 import { AdminUser } from "../models/AdminUser";
 import { GalleryImage } from "../models/GalleryImage";
 import { Servicio } from "../models/Servicio";
@@ -27,6 +28,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Error al inicializar la base de datos:", err);
+  console.error(`Error al inicializar la base de datos: ${safeErrorLog(err)}`);
   process.exit(1);
 });

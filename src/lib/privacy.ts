@@ -36,6 +36,9 @@ const URI_CREDENTIALS_RE = /\/\/[^/\s:@]+:[^@\s]+@/g;
 // API keys de Resend ("re_AbC123_xYz...") y cualquier "Bearer <token>": se ocultan completas.
 const RESEND_KEY_RE = /\bre_[A-Za-z0-9_]{6,}/g;
 const BEARER_RE = /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi;
+// Valor que sigue a "API key", "api_key=" o "api-key:" (p. ej. Cloudinary responde
+// "Unknown API key 123456789012345"): se oculta completo, no solo enmascarado como teléfono.
+const API_KEY_RE = /\b(api[ _-]?key)(\s*[:=]?\s*)[A-Za-z0-9_-]{6,}/gi;
 
 // Busca correos y teléfonos dentro de un texto libre (mensajes de error, stacks) y los enmascara.
 export function redactPII(text: string): string {
@@ -43,6 +46,7 @@ export function redactPII(text: string): string {
     .replace(URI_CREDENTIALS_RE, "//****:****@")
     .replace(RESEND_KEY_RE, "re_****")
     .replace(BEARER_RE, "Bearer ****")
+    .replace(API_KEY_RE, "$1$2****")
     .replace(EMAIL_RE, maskEmail).replace(PHONE_RE, (m) => (m.replace(/\D/g, "").length >= 8 ? maskPhone(m) : m));
 }
 

@@ -4,6 +4,7 @@ import { GALLERY_CATEGORIES, type GalleryCategory } from "../models/GalleryImage
 import { uploadImage, deleteImage } from "../lib/cloudinary";
 import { adminDetail, errorResponses, GalleryImageSchema, IdParams, toApi } from "../lib/apiSchemas";
 import { ApiError } from "../lib/errors";
+import { safeErrorLog } from "../lib/privacy";
 import { rechazarCamposExtra, textoLibre } from "../lib/validation";
 import { sanitizeText } from "../lib/sanitize";
 import {
@@ -60,7 +61,8 @@ async function upload(file: File) {
   try {
     return await uploadImage(file);
   } catch (error) {
-    console.error("Cloudinary: falló la subida:", error);
+    // Enmascarado: los errores de Cloudinary pueden traer la API key o datos de la petición.
+    console.error(`Cloudinary: falló la subida: ${safeErrorLog(error)}`);
     throw new ApiError(502, "No se pudo procesar la imagen. Intenta de nuevo.");
   }
 }
@@ -134,7 +136,7 @@ export const adminGalleryRoutes = new Elysia({ prefix: "/api/admin/gallery" })
 
         // Se borra la anterior después de subir la nueva; si falla, no rompe la operación.
         deleteImage(previousPublicId).catch((error) =>
-          console.error("Cloudinary: no se pudo borrar la imagen anterior:", error)
+          console.error(`Cloudinary: no se pudo borrar la imagen anterior: ${safeErrorLog(error)}`)
         );
       }
 
@@ -171,7 +173,7 @@ export const adminGalleryRoutes = new Elysia({ prefix: "/api/admin/gallery" })
       if (!doc) throw new ApiError(404, "Imagen no encontrada.");
 
       await deleteImage(doc.publicId).catch((error) =>
-        console.error("Cloudinary: no se pudo borrar la imagen:", error)
+        console.error(`Cloudinary: no se pudo borrar la imagen: ${safeErrorLog(error)}`)
       );
       await eliminarImagenGaleria(params.id);
 

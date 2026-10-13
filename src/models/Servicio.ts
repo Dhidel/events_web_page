@@ -10,9 +10,12 @@ export interface ServicioAttrs {
   nombre: string;
   descripcion: string;
   categoria: ServicioCategoria;
-  // Precio en quetzales, por personaje, dentro de la Ciudad Capital.
+  // Precio en quetzales, por personaje (o por grupo, si tiene `artistas`), dentro de la Ciudad Capital.
   precio: number;
   unidad: ServicioUnidad;
+  // Artistas incluidos en el precio cuando el servicio es un grupo (p. ej. una batucada de 3).
+  // En el cotizador la cantidad cuenta grupos completos, no artistas ni horas.
+  artistas?: number;
   // false = oculto en el sitio sin borrarlo de la base.
   activo: boolean;
   // Posición en el catálogo (Servicios y Cotizador lo muestran en este orden).
@@ -29,6 +32,7 @@ const servicioSchema = new Schema<ServicioAttrs, ServicioModel>(
     categoria: { type: String, required: true, enum: SERVICIO_CATEGORIAS },
     precio: { type: Number, required: true, min: 0 },
     unidad: { type: String, required: true, enum: SERVICIO_UNIDADES, default: "por hora" },
+    artistas: { type: Number, min: 1, validate: { validator: Number.isInteger, message: "artistas debe ser un entero." } },
     activo: { type: Boolean, default: true },
     orden: { type: Number, default: 0 },
   },

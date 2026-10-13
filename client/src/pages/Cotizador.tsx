@@ -47,6 +47,8 @@ export default function Cotizador() {
   const [contact, setContact] = useState<ContactState>({ name: "", phone: "", email: "" });
   const [contactErrors, setContactErrors] = useState<ContactState>({ name: "", phone: "", email: "" });
   const [eventType, setEventType] = useState(EVENT_TYPES[0]);
+  // Evento fuera de la Ciudad Capital: no suma al total, solo avisa a ventas (traslado aparte).
+  const [fueraDeCapital, setFueraDeCapital] = useState(false);
   const [confirmacion, setConfirmacion] = useState<Confirmacion>({ estado: "inicial" });
   const [sitioWeb, setSitioWeb] = useState(""); // honeypot: siempre vacío para una persona real
   // Freno síncrono contra doble clic: el estado de React se actualiza después del clic.
@@ -96,6 +98,7 @@ export default function Cotizador() {
     setContact({ name: "", phone: "", email: "" });
     setContactErrors({ name: "", phone: "", email: "" });
     setEventType(EVENT_TYPES[0]);
+    setFueraDeCapital(false);
     setConfirmacion({ estado: "inicial" });
   };
 
@@ -114,24 +117,26 @@ export default function Cotizador() {
   const { total, totalQty, lines, waHref } = useMemo(() => {
     let total = 0;
     let totalQty = 0;
-    const lines: { id: string; name: string; qty: number; subtotal: number }[] = [];
+    // esGrupo: el precio es por grupo (batucadas con `artistas`) y la cantidad cuenta grupos.
+    const lines: { id: string; name: string; qty: number; subtotal: number; esGrupo: boolean }[] = [];
     for (const servicio of servicios) {
       const qty = quantities[servicio.id] ?? 0;
       if (qty > 0) {
         const subtotal = redondearMonto(qty * servicio.precio);
         total = redondearMonto(total + subtotal);
         totalQty += qty;
-        lines.push({ id: servicio.id, name: servicio.nombre, qty, subtotal });
+        lines.push({ id: servicio.id, name: servicio.nombre, qty, subtotal, esGrupo: servicio.artistas !== undefined });
       }
     }
     const waHref = enlaceWhatsApp(
       mensajeEstimado(
         lines.map((l) => ({ nombre: l.name, cantidad: l.qty, subtotal: l.subtotal })),
-        total
+        total,
+        fueraDeCapital
       )
     );
     return { total, totalQty, lines, waHref };
-  }, [servicios, quantities]);
+  }, [servicios, quantities, fueraDeCapital]);
 
   const hasSelection = totalQty > 0;
 
@@ -156,7 +161,9 @@ export default function Cotizador() {
       // que se calculó aquí: si un precio cambió, el mensaje y lo guardado coinciden.
       waHref: (guardada) => {
         const estimado = leerEstimadoGuardado(guardada.detalleCotizador);
-        return estimado ? enlaceWhatsApp(mensajeEstimado(estimado.lineas, estimado.total)) : waHref;
+        return estimado
+          ? enlaceWhatsApp(mensajeEstimado(estimado.lineas, estimado.total, estimado.fueraDeCapital))
+          : waHref;
       },
       guardar: () =>
         submitCotizacion(
@@ -170,6 +177,8 @@ export default function Cotizador() {
             detalleCotizador: {
               personajes: lines.map((l) => ({ servicioId: l.id, nombre: l.name, cantidad: l.qty, subtotal: l.subtotal })),
               total,
+              // Solo se manda si está marcado. No cambia el total: el traslado se cotiza aparte.
+              fueraDeCapital: fueraDeCapital || undefined,
             },
             sitioWeb: sitioWeb || undefined,
           },
@@ -218,7 +227,8 @@ export default function Cotizador() {
               <span className="eyebrow on-light"><svg><use href="#i-sparkle" /></svg>Selecciona tus personajes</span>
               <h2 style={{ fontSize: "24px", fontWeight: 900, marginBottom: "8px" }}>¿Qué quieres en tu evento?</h2>
               <p style={{ color: "var(--muted)", fontSize: "13.5px", marginBottom: "22px" }}>
-                Precios reales por personaje, 1 hora de animación, dentro de la Ciudad Capital.
+                Precios reales por personaje (las batucadas, por grupo), 1 hora de animación, dentro de la Ciudad
+                Capital.
               </p>
 
               {status === "loading" && <p className="gallery-empty">Cargando servicios…</p>}
@@ -236,9 +246,20 @@ export default function Cotizador() {
                     <div className="act-row" key={servicio.id}>
                       <div className="act-row-info">
                         <h4>{servicio.nombre}</h4>
-                        <span>
-                          {servicio.descripcion} · 1 hora · <strong>Q{servicio.precio.toLocaleString("es-GT")}</strong> c/u
-                        </span>
+                        {servicio.artistas !== undefined ? (
+                          // Grupo (batucadas): el precio cubre 1 hora con N artistas y la cantidad cuenta grupos.
+                          <>
+                            <span>{servicio.descripcion}</span>
+                            <span className="act-row-grupo">
+                              <strong>Q{servicio.precio.toLocaleString("es-GT")}</strong> por grupo · 1 hora ·{" "}
+                              {servicio.artistas} artistas. La cantidad es el número de grupos, no de horas.
+                            </span>
+                          </>
+                        ) : (
+                          <span>
+                            {servicio.descripcion} · 1 hora · <strong>Q{servicio.precio.toLocaleString("es-GT")}</strong> c/u
+                          </span>
+                        )}
                       </div>
                       <div className="act-row-qty">
                         <button
@@ -256,6 +277,7 @@ export default function Cotizador() {
                           min={0}
                           max={20}
                           readOnly
+                          aria-label={servicio.artistas !== undefined ? `Grupos de ${servicio.nombre}` : `Cantidad de ${servicio.nombre}`}
                         />
                         <button
                           type="button"
@@ -270,19 +292,6 @@ export default function Cotizador() {
                   ))}
                 </div>
               )}
-
-              <p style={{ fontSize: "12px", color: "var(--muted)", marginTop: "16px", lineHeight: 1.6 }}>
-                ¿Buscas Batucadas Temáticas (Brasileña, Dominicana, Chapina, Colombiana)? Tienen precio variable —{" "}
-                <a
-                  href="https://wa.me/50230738716?text=Hola!%20Quiero%20cotizar%20una%20Batucada%20Tematica"
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: "var(--blue)", fontWeight: 700 }}
-                >
-                  cotízalas directo por WhatsApp
-                </a>
-                .
-              </p>
             </div>
 
             <div>
@@ -298,13 +307,34 @@ export default function Cotizador() {
                     <span style={{ color: "rgba(255,255,255,.4)" }}>Aún no has seleccionado personajes.</span>
                   ) : (
                     lines.map((l) => (
-                      <div key={l.id} style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>{l.qty}x {l.name}</span>
+                      <div key={l.id} style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+                        <span>
+                          {l.esGrupo ? `${l.qty} ${l.qty === 1 ? "grupo" : "grupos"} · ` : `${l.qty}x `}
+                          {l.name}
+                        </span>
                         <span>Q{l.subtotal.toLocaleString("es-GT")}</span>
                       </div>
                     ))
                   )}
                 </div>
+
+                <label className="quoter-traslado">
+                  <input
+                    type="checkbox"
+                    checked={fueraDeCapital}
+                    disabled={guardando}
+                    onChange={(e) => {
+                      setFueraDeCapital(e.target.checked);
+                      setConfirmacion((c) => (c.estado === "guardada" ? { estado: "inicial" } : c));
+                    }}
+                  />
+                  Mi evento es fuera de la Ciudad Capital
+                </label>
+                {fueraDeCapital && (
+                  <p className="quoter-traslado-nota" role="status">
+                    El traslado fuera de la Ciudad Capital se cotiza aparte, según la distancia y el día.
+                  </p>
+                )}
 
                 {hasSelection && (
                   <div className="quoter-contact">
@@ -463,9 +493,13 @@ export default function Cotizador() {
                   </button>
                 )}
 
-                <p style={{ fontSize: "12px", color: "rgba(255,255,255,.4)", marginTop: "14px", lineHeight: 1.5 }}>
-                  * Precio dentro de la Ciudad Capital. Traslado fuera de la capital, horas adicionales y montaje
-                  especial se cotizan aparte con un asesor.
+                {/* Texto legal aprobado por el cliente: no cambiarlo sin su visto bueno. */}
+                <p style={{ fontSize: "12px", color: "rgba(255,255,255,.55)", marginTop: "14px", lineHeight: 1.5 }}>
+                  <strong>Nota sobre este estimado:</strong> Los valores mostrados por este cotizador automatizado son
+                  precios aproximados de referencia y pueden variar según los detalles específicos, ubicación y fecha
+                  de su evento. Este cálculo no representa una cotización final ni un compromiso de reserva. Para
+                  recibir una propuesta formal y definitiva a la medida de sus necesidades, por favor póngase en
+                  contacto con nuestro equipo de ventas de ShowCompany.
                 </p>
               </div>
             </div>

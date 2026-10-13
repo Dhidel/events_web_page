@@ -25,6 +25,9 @@ export interface LineaEstimado {
 export interface DetalleCotizador {
   personajes: LineaEstimado[];
   total: number;
+  // El cliente marcó que el evento es fuera de la Ciudad Capital. Solo es un aviso para ventas:
+  // el traslado se cotiza aparte y no suma al total. Ausente si no lo marcó.
+  fueraDeCapital?: true;
 }
 
 // Selección que no se puede cotizar (servicio inexistente, cantidades fuera de rango...).
@@ -71,9 +74,14 @@ export function calcularEstimado(servicios: ServicioConPrecio[], seleccion: Pers
 
 // Arma el detalle del cotizador con los precios que hay en MongoDB en este momento.
 // El total (y nombres/subtotales) que mande el cliente se ignoran: siempre se recalculan aquí.
-export async function recalcularDetalleCotizador(seleccion: PersonajeSeleccionado[]): Promise<DetalleCotizador> {
+// `fueraDeCapital` solo se anota en el detalle; no cambia el total.
+export async function recalcularDetalleCotizador(
+  seleccion: PersonajeSeleccionado[],
+  opciones: { fueraDeCapital?: boolean } = {}
+): Promise<DetalleCotizador> {
   const ids = [...new Set(seleccion.map((p) => p.servicioId))];
   const docs = await Servicio.find({ _id: { $in: ids }, activo: true });
   const servicios = docs.map((d) => ({ id: d.id as string, nombre: d.nombre, precio: d.precio }));
-  return calcularEstimado(servicios, seleccion);
+  const detalle = calcularEstimado(servicios, seleccion);
+  return opciones.fueraDeCapital ? { ...detalle, fueraDeCapital: true } : detalle;
 }

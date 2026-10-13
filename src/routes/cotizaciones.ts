@@ -30,6 +30,11 @@ const DetalleCotizadorBody = t.Object(
       { maxItems: 50 }
     ),
     total: t.Optional(t.Number({ description: "Se ignora: el servidor recalcula el total con los precios reales." })),
+    fueraDeCapital: t.Optional(
+      t.Boolean({
+        description: "El evento es fuera de la Ciudad Capital. No suma al total: el traslado se cotiza aparte. Queda en el detalle guardado para ventas.",
+      })
+    ),
   },
   { additionalProperties: false }
 );
@@ -101,10 +106,16 @@ function respuestaHoneypot(datos: Omit<Static<typeof CotizacionBody>, "detalleCo
   };
 }
 
-// Elysia convierte "2" (texto) a 2 antes de validar, así que t.Integer no lo rechaza. Aquí,
-// en `transform`, el body todavía está como llegó: las cantidades tienen que ser números.
-function rechazarCantidadesNoNumericas({ body }: { body: unknown }) {
-  const personajes = (body as { detalleCotizador?: { personajes?: unknown } } | null)?.detalleCotizador?.personajes;
+// Elysia convierte "2" (texto) a 2 y "true" a true antes de validar, así que t.Integer y
+// t.Boolean no lo rechazan. Aquí, en `transform`, el body todavía está como llegó: las
+// cantidades tienen que ser números y fueraDeCapital un booleano.
+function rechazarTiposConvertidos({ body }: { body: unknown }) {
+  const detalle = (body as { detalleCotizador?: { personajes?: unknown; fueraDeCapital?: unknown } } | null)?.detalleCotizador;
+  if (!detalle || typeof detalle !== "object") return;
+  if ("fueraDeCapital" in detalle && detalle.fueraDeCapital !== undefined && typeof detalle.fueraDeCapital !== "boolean") {
+    throw new ApiError(422, "Datos inválidos o faltantes: detalleCotizador.");
+  }
+  const personajes = detalle.personajes;
   if (!Array.isArray(personajes)) return;
   if (personajes.some((p) => p !== null && typeof p === "object" && "cantidad" in p && typeof p.cantidad !== "number")) {
     throw new ApiError(422, "Datos inválidos o faltantes: detalleCotizador.");
@@ -148,7 +159,9 @@ export const cotizacionesRoutes = new Elysia().post(
     if (datos.origen === "cotizador") {
       if (!detalleCotizador) throw new ApiError(422, "Datos inválidos o faltantes: detalleCotizador.");
       try {
-        detalle = await recalcularDetalleCotizador(detalleCotizador.personajes);
+        detalle = await recalcularDetalleCotizador(detalleCotizador.personajes, {
+          fueraDeCapital: detalleCotizador.fueraDeCapital,
+        });
       } catch (error) {
         if (error instanceof SeleccionInvalidaError) throw new ApiError(422, error.message);
         throw error;
@@ -162,7 +175,7 @@ export const cotizacionesRoutes = new Elysia().post(
   {
     parse: "json",
     body: CotizacionBody,
-    transform: [rechazarCamposExtra(CotizacionBody), rechazarCantidadesNoNumericas],
+    transform: [rechazarCamposExtra(CotizacionBody), rechazarTiposConvertidos],
     response: { 201: SolicitudSchema, ...errorResponses(400, 422, 429, 500) },
     detail: {
       tags: ["Público"],
@@ -171,6 +184,7 @@ export const cotizacionesRoutes = new Elysia().post(
         "Guarda una solicitud del formulario de Contacto o del Cotizador con estado \"nuevo\". Valida formato estricto de correo, teléfono y longitudes. Responde 422 si los datos son inválidos.\n\n" +
         "Con `origen: \"cotizador\"`, `detalleCotizador.personajes` es obligatorio (cantidades enteras de 0 a " +
         `${MAX_CANTIDAD_POR_SERVICIO}). El servidor recalcula nombres, subtotales y total con los precios actuales de MongoDB e ignora los que manda el cliente. ` +
+        "`detalleCotizador.fueraDeCapital: true` marca un evento fuera de la Ciudad Capital: queda en el detalle guardado pero no suma al total (el traslado se cotiza aparte). " +
         "Responde 422 si un servicio no existe o está inactivo. Con `origen: \"contacto\"` el detalle se descarta.\n\n" +
         "No se aceptan campos que no estén en el esquema (422 \"Campos no permitidos: ...\").\n\n" +
         `Contra spam y duplicados: más de ${MAX_SOLICITUDES_POR_IP} envíos desde la misma IP en ${VENTANA_SOLICITUDES_MS / 60000} minutos responden 429 ` +

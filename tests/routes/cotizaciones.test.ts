@@ -5,6 +5,7 @@ import { errorHandler } from "../../src/lib/errors";
 import { Servicio } from "../../src/models/Servicio";
 import { Solicitud } from "../../src/models/Solicitud";
 import { cotizacionesRoutes } from "../../src/routes/cotizaciones";
+import { sembrarServicios } from "../../src/scripts/seed-servicios";
 
 // La ruta real con el mismo manejador de errores que usa el servidor (src/index.ts).
 const app = new Elysia().use(errorHandler).use(cotizacionesRoutes);
@@ -270,5 +271,99 @@ describe("POST /api/cotizaciones — detalles de entrada", () => {
     const guardada = (await res.json()) as { nombre: string; mensaje: string };
     expect(guardada.nombre).toBe("Juan <3 María");
     expect(guardada.mensaje).toBe("Somos < 50 invitados aprox y x > y");
+  });
+});
+
+describe("POST /api/cotizaciones — batucadas temáticas y traslado fuera de la capital", () => {
+  // Catálogo real del seed (incluye las 4 batucadas temáticas), en el MongoDB en memoria.
+  let ids: Record<string, string>;
+
+  beforeEach(async () => {
+    await sembrarServicios();
+    const docs = await Servicio.find().lean();
+    ids = Object.fromEntries(docs.map((d) => [d.nombre, d._id.toString()]));
+  });
+
+  const cotizar = (personajes: { servicioId: string; cantidad: number }[], extra: Record<string, unknown> = {}) =>
+    post({ ...contacto, origen: "cotizador", detalleCotizador: { personajes, ...extra } });
+
+  test("total con una batucada temática: Q3,800 por 1 grupo (1 hora, 3 artistas)", async () => {
+    const res = await cotizar([{ servicioId: ids["Batucada Temática Brasileña"]!, cantidad: 1 }]);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { detalleCotizador: Detalle };
+    expect(body.detalleCotizador).toEqual({
+      personajes: [
+        {
+          servicioId: ids["Batucada Temática Brasileña"]!,
+          nombre: "Batucada Temática Brasileña",
+          cantidad: 1,
+          precioUnitario: 3800,
+          subtotal: 3800,
+        },
+      ],
+      total: 3800,
+    });
+  });
+
+  test("total mezclando servicios: temáticas, Hora Loca y personajes", async () => {
+    const res = await cotizar([
+      { servicioId: ids["Batucada Temática Chapina"]!, cantidad: 2 }, // 7 600
+      { servicioId: ids["Batucada Temática Colombiana"]!, cantidad: 1 }, // 3 800
+      { servicioId: ids["Batucada Hora Loca — 6 Tamboreros"]!, cantidad: 1 }, // 6 500
+      { servicioId: ids["Zanquero Iluminado"]!, cantidad: 3 }, // 7 500
+      { servicioId: ids["Cabezones de Tus Artistas Favoritos"]!, cantidad: 2 }, // 3 600
+    ]);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { detalleCotizador: Detalle };
+    expect(body.detalleCotizador.personajes.map((p) => p.subtotal)).toEqual([7600, 3800, 6500, 7500, 3600]);
+    expect(body.detalleCotizador.total).toBe(29000);
+  });
+
+  test("fuera de la capital: no suma al total y la marca queda guardada para ventas", async () => {
+    const seleccion = [
+      { servicioId: ids["Batucada Temática Dominicana"]!, cantidad: 1 },
+      { servicioId: ids["Robots LED"]!, cantidad: 1 },
+    ];
+    const res = await cotizar(seleccion, { fueraDeCapital: true, total: 999999 });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { id: string; detalleCotizador: Detalle & { fueraDeCapital?: boolean } };
+    expect(body.detalleCotizador.total).toBe(6300);
+    expect(body.detalleCotizador.fueraDeCapital).toBe(true);
+
+    const guardada = await Solicitud.findById(body.id).lean();
+    expect(guardada!.detalleCotizador).toMatchObject({ total: 6300, fueraDeCapital: true });
+  });
+
+  test("sin marcar (o false) no se guarda la marca, y el total es el mismo", async () => {
+    const seleccion = [{ servicioId: ids["Batucada Temática Dominicana"]!, cantidad: 1 }];
+    const res = await cotizar(seleccion, { fueraDeCapital: false });
+    const body = (await res.json()) as { detalleCotizador: Record<string, unknown> };
+    expect(body.detalleCotizador.total).toBe(3800);
+    expect(body.detalleCotizador).not.toHaveProperty("fueraDeCapital");
+  });
+
+  test("la misma selección con y sin traslado son dos solicitudes distintas (no se toma como duplicado)", async () => {
+    const seleccion = [{ servicioId: ids["Batucada Temática Chapina"]!, cantidad: 1 }];
+    await cotizar(seleccion);
+    await cotizar(seleccion, { fueraDeCapital: true });
+    expect(await Solicitud.countDocuments()).toBe(2);
+  });
+
+  test.each([
+    ["texto \"true\"", "true"],
+    ["número 1", 1],
+  ])("fueraDeCapital como %s se rechaza (422) y no se guarda nada", async (_caso, valor) => {
+    const res = await cotizar([{ servicioId: ids["Batucada Temática Chapina"]!, cantidad: 1 }], { fueraDeCapital: valor });
+    expect(res.status).toBe(422);
+    expect(await Solicitud.countDocuments()).toBe(0);
+  });
+
+  test("un campo extra junto a fueraDeCapital sigue respondiendo 422 ([14.1])", async () => {
+    const res = await cotizar([{ servicioId: ids["Batucada Temática Chapina"]!, cantidad: 1 }], {
+      fueraDeCapital: true,
+      costoTraslado: 0,
+    });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: "Campos no permitidos: detalleCotizador.costoTraslado." });
   });
 });

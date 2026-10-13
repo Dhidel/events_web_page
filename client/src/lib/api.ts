@@ -51,6 +51,8 @@ export interface Servicio {
   categoria: string;
   precio: number;
   unidad: string;
+  // Solo en grupos (batucadas): artistas incluidos en el precio. La cantidad cuenta grupos.
+  artistas?: number;
   activo: boolean;
   orden: number;
 }

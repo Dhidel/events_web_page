@@ -47,8 +47,11 @@ export const ServicioSchema = t.Object(
     nombre: t.String(),
     descripcion: t.String(),
     categoria: literals(SERVICIO_CATEGORIAS),
-    precio: t.Number({ description: "Precio en quetzales, por personaje, dentro de la Ciudad Capital." }),
+    precio: t.Number({ description: "Precio en quetzales, por personaje (o por grupo, si trae `artistas`), dentro de la Ciudad Capital." }),
     unidad: literals(SERVICIO_UNIDADES),
+    artistas: t.Optional(
+      t.Integer({ minimum: 1, description: "Artistas incluidos en el precio cuando el servicio es un grupo (batucadas). En el cotizador, la cantidad cuenta grupos." })
+    ),
     activo: t.Boolean(),
     orden: t.Number({ description: "Posición en el catálogo." }),
     createdAt: t.Date(),
@@ -64,6 +67,7 @@ export const ServicioSchema = t.Object(
         categoria: "Batucadas",
         precio: 3800,
         unidad: "por hora",
+        artistas: 3,
         activo: true,
         orden: 0,
         createdAt: "2026-09-23T23:06:09.856Z",

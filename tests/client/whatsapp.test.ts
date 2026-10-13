@@ -246,6 +246,21 @@ describe("WhatsApp con el estimado que guardó el servidor", () => {
     );
   });
 
+  test("fuera de la capital: agrega una línea de traslado y el total no cambia", () => {
+    expect(mensajeEstimado([{ nombre: "Batucada Temática Chapina", cantidad: 1, subtotal: 3800 }], 3800, true)).toBe(
+      "Hola! Usé el cotizador del sitio y me interesa este estimado:\n1x Batucada Temática Chapina (Q3,800)\n" +
+        "Total estimado: Q3,800\nMi evento es fuera de la Ciudad Capital (traslado a cotizar aparte)."
+    );
+  });
+
+  test("leerEstimadoGuardado lee la marca fueraDeCapital (ausente = false)", () => {
+    const personajes = [{ nombre: "Zanquero", cantidad: 1, subtotal: 2500 }];
+    expect(leerEstimadoGuardado({ personajes, total: 2500, fueraDeCapital: true })!.fueraDeCapital).toBe(true);
+    expect(leerEstimadoGuardado({ personajes, total: 2500 })!.fueraDeCapital).toBe(false);
+    // Solo un booleano true cuenta: un texto no se toma como marca.
+    expect(leerEstimadoGuardado({ personajes, total: 2500, fueraDeCapital: "true" })!.fueraDeCapital).toBe(false);
+  });
+
   test("redondearMonto deja los montos en centavos", () => {
     expect(redondearMonto(0.1 * 3)).toBe(0.3);
     expect(redondearMonto(1999.99 * 3 + 0.1 * 7)).toBe(6000.67);

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import nosotrosBanner from "../assets/img/nosotros-banner.jpg";
 import quinceAlicia from "../assets/img/quince-alicia.jpg";
+import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 const STATS = [
   { icon: "i-star", title: "25 años", text: "de trayectoria formal en el mercado guatemalteco desde 2003" },
@@ -118,7 +119,7 @@ export default function Nosotros() {
           <p>Conoces nuestra historia — ahora cuéntanos tu proyecto y te presentamos una propuesta a la altura.</p>
           <div className="hero-ctas">
             <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Solicitar catálogo exclusivo</Link>
-            <a href="https://wa.me/50230738716" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
           </div>
         </div>
       </section>

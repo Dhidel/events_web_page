@@ -15,6 +15,7 @@ import {
 } from "../lib/validators";
 import { submitCotizacion } from "../lib/api";
 import CampoTrampa from "../components/CampoTrampa";
+import { generarEnlaceWhatsApp, generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 const FAQS = [
   {
@@ -101,6 +102,17 @@ export default function Contacto() {
         sitioWeb: form.sitioWeb || undefined,
       });
 
+      // Generar y abrir el enlace de WhatsApp con los datos estructurados
+      const urlWA = generarEnlaceWhatsApp({
+        nombre: form.name.trim(),
+        tipoEvento: form.eventType !== EVENT_TYPES[0] ? form.eventType : undefined,
+        fechaEvento: form.date || undefined,
+        mensaje: form.details.trim() || undefined,
+        origen: "contacto",
+      });
+
+      window.open(urlWA, "_blank", "noopener,noreferrer");
+
       setSubmitSuccess(true);
       setForm({ name: "", phone: "", email: "", eventType: EVENT_TYPES[0], date: "", details: "", sitioWeb: "" });
     } catch (err) {
@@ -147,7 +159,7 @@ export default function Contacto() {
               <div><span className="ico"><svg><use href="#i-clock" /></svg></span> Oficina: Lun - Vie, horario laboral · Redes sociales: atención 24 horas</div>
             </div>
 
-            <a href="https://wa.me/50230738716" className="btn btn-primary" style={{ marginBottom: "30px" }}>
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ marginBottom: "30px" }}>
               <svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp ahora
             </a>
 
@@ -165,7 +177,7 @@ export default function Contacto() {
               <a href="https://www.youtube.com/@showcompanygt" target="_blank" rel="noreferrer" style={{ background: "var(--yt)" }} aria-label="YouTube">
                 <svg><use href="#i-yt" /></svg>
               </a>
-              <a href="https://wa.me/50230738716" target="_blank" rel="noreferrer" style={{ background: "var(--wa)" }} aria-label="WhatsApp">
+              <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" style={{ background: "var(--wa)" }} aria-label="WhatsApp">
                 <svg><use href="#i-whatsapp" /></svg>
               </a>
             </div>

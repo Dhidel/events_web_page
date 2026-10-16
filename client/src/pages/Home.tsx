@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import quinceAlicia from "../assets/img/quince-alicia.jpg";
 import espectaculosRobots from "../assets/img/espectaculos-robots.jpg";
@@ -10,6 +10,7 @@ import carnavalPlumas from "../assets/img/carnaval-plumas.jpg";
 import aveTematico from "../assets/img/ave-tematico.jpg";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
 import bodasBn from "../assets/img/bodas-anillos-bn.jpg";
+import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 const SLIDES = [quinceAlicia, espectaculosRobots, navidad, corporativo, quinceVivo];
 
@@ -244,7 +245,7 @@ export default function Home() {
               <span>Shows completos en video</span>
               <span className="sc-btn">Suscribirme</span>
             </a>
-            <a href="https://wa.me/50230738716" target="_blank" rel="noreferrer" className="social-card sc-wa">
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="social-card sc-wa">
               <div className="sc-icon"><svg><use href="#i-whatsapp" /></svg></div>
               <h4>WhatsApp</h4>
               <span>Cotiza directo, sin vueltas</span>
@@ -385,7 +386,7 @@ export default function Home() {
           <p>Más de 25 años diseñando los mejores eventos de Guatemala. Cuéntanos tu proyecto y te presentamos una propuesta a la altura.</p>
           <div className="hero-ctas">
             <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Solicitar catálogo exclusivo</Link>
-            <a href="https://wa.me/50230738716" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
           </div>
         </div>
       </section>

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import logo from "../assets/img/logo.png";
+import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 export default function Footer() {
   return (
@@ -51,7 +52,7 @@ export default function Footer() {
               <a href="https://www.youtube.com/@showcompanygt" target="_blank" rel="noreferrer" className="s-yt" aria-label="YouTube">
                 <svg><use href="#i-yt" /></svg>
               </a>
-              <a href="https://wa.me/50230738716" target="_blank" rel="noreferrer" className="s-wa" aria-label="WhatsApp">
+              <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="s-wa" aria-label="WhatsApp">
                 <svg><use href="#i-whatsapp" /></svg>
               </a>
             </div>

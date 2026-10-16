@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
 import { fetchGallery, type GalleryImage } from "../lib/api";
+import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 const FILTERS: { key: string; label: string }[] = [
   { key: "todos", label: "Todos" },
@@ -12,8 +13,6 @@ const FILTERS: { key: string; label: string }[] = [
   { key: "espectaculos", label: "Espectáculos" },
 ];
 
-// Una foto de la galería con sus tres estados: cargando (skeleton), lista y error.
-// Si la URL falla no se ve el ícono roto del navegador sino un reemplazo con el alt.
 function GalleryPhoto({ item, hidden }: { item: GalleryImage; hidden: boolean }) {
   const [estado, setEstado] = useState<"cargando" | "lista" | "error">("cargando");
 
@@ -47,7 +46,6 @@ function GalleryPhoto({ item, hidden }: { item: GalleryImage; hidden: boolean })
 
 export default function Galeria() {
   const [filter, setFilter] = useState("todos");
-  // La galería se sirve entera desde /api/gallery (la administra el panel admin).
   const [items, setItems] = useState<GalleryImage[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
@@ -118,7 +116,7 @@ export default function Galeria() {
           <p>Cuéntanos tu proyecto y te presentamos una propuesta a la altura de tu evento.</p>
           <div className="hero-ctas">
             <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Solicitar catálogo exclusivo</Link>
-            <a href="https://wa.me/50230738716" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
           </div>
         </div>
       </section>

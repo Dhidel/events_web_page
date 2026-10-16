@@ -6,6 +6,7 @@ import bodasColor from "../assets/img/bodas-anillos-color.jpg";
 import navidad from "../assets/img/navidad.jpg";
 import espectaculosRobots from "../assets/img/espectaculos-robots.jpg";
 import { fetchServicios, type Servicio } from "../lib/api";
+import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 const DETAILS = [
   {
@@ -91,11 +92,10 @@ function waLink(name: string, price: number | null) {
     price !== null
       ? `Hola! Me interesa cotizar: ${name} (Q${price.toLocaleString("es-GT")} c/u). Quisiera más información.`
       : `Hola! Me interesa cotizar: ${name}`;
-  return `https://wa.me/50230738716?text=${encodeURIComponent(text)}`;
+  return generarEnlaceWhatsAppDirecto(text);
 }
 
 export default function Servicios() {
-  // El catálogo con precios se sirve desde /api/servicios (MongoDB).
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
@@ -188,7 +188,6 @@ export default function Servicios() {
                   <div className="act-meta">
                     <div className="act-price">
                       Q{s.precio.toLocaleString("es-GT")}
-                      {/* Grupos (batucadas): el precio cubre al grupo completo, no a cada artista. */}
                       <small>{s.artistas !== undefined ? `Costo por grupo · ${s.artistas} artistas` : "Costo por personaje"}</small>
                     </div>
                     <div className="act-duration">Duración<br />1 hora</div>
@@ -209,7 +208,7 @@ export default function Servicios() {
           <p>Poseemos un portafolio exclusivo con una amplia variedad de conceptos artísticos. Cuéntanos tu proyecto y diseñamos la propuesta perfecta.</p>
           <div className="hero-ctas">
             <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Solicitar catálogo exclusivo</Link>
-            <a href="https://wa.me/50230738716" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
           </div>
         </div>
       </section>

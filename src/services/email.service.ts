@@ -1,5 +1,6 @@
 import { resend } from "../lib/resend";
 import type { SolicitudAttrs } from "../models/Solicitud";
+import { generarEnlaceRespuestaCliente, type SolicitudWhatsAppBackend } from "./whatsapp.service";
 
 export interface SolicitudParaCorreo {
   nombre: string;
@@ -20,8 +21,6 @@ interface ItemCotizacion {
   subtotal?: number;
 }
 
-// El texto del cliente va dentro del HTML del correo: se escapa para que un "<" o "&"
-// se muestre tal cual en vez de interpretarse como HTML.
 function escaparHtml(texto: unknown): string {
   return String(texto ?? "")
     .replace(/&/g, "&amp;")
@@ -39,6 +38,9 @@ function formatearMoneda(monto: number | undefined): string {
 function generarTemplateCorreo(solicitud: SolicitudParaCorreo): string {
   const esCotizador = solicitud.origen === "cotizador";
   const titulo = esCotizador ? "Nueva Cotización Recibida" : "Nuevo Mensaje de Contacto";
+
+  // Generar enlace directo de WhatsApp para responder al cliente
+  const linkWhatsAppCliente = generarEnlaceRespuestaCliente(solicitud as SolicitudWhatsAppBackend);
 
   let bloqueCotizador = "";
 
@@ -176,6 +178,13 @@ function generarTemplateCorreo(solicitud: SolicitudParaCorreo): string {
 
       ${bloqueCotizador}
 
+      <!-- Botón Click-to-Chat para el Administrador -->
+      <div style="margin-top: 24px; text-align: center;">
+        <a href="${linkWhatsAppCliente}" target="_blank" style="display: inline-block; background-color: #25D366; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 24px; border-radius: 6px;">
+          💬 Responder al cliente por WhatsApp
+        </a>
+      </div>
+
       <p style="margin-top: 32px; font-size: 12px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 16px;">
         Notificación generada automáticamente por Show Company.
       </p>
@@ -202,8 +211,6 @@ export async function enviarCorreoNotificacion(solicitud: SolicitudParaCorreo) {
     html,
   });
 
-  // No se loguea aquí el objeto de error de Resend (puede traer direcciones de correo):
-  // se lanza y quien lo atrapa lo registra enmascarado con safeErrorLog.
   if (error) {
     throw new Error(`Resend rechazó el envío (${error.statusCode ?? "sin código"} ${error.name}): ${error.message}`);
   }

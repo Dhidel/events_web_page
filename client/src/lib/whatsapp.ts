@@ -12,7 +12,7 @@ export type ResultadoConfirmacion<T = unknown> =
   // limite: el servidor respondió 429. Reintentar enseguida volvería a fallar.
   | { ok: false; error: string; limite?: true };
 
-const WHATSAPP_NUMERO = "50230738716";
+const WHATSAPP_NUMERO = (import.meta.env?.VITE_WHATSAPP_PHONE as string) || "50230738716";
 
 export interface LineaEstimado {
   nombre: string;

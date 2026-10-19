@@ -26,3 +26,9 @@ export const isEmailValid = (value: string) => {
 export const MENSAJE_NOMBRE = "Ingresa tu nombre (mínimo 2 letras).";
 export const MENSAJE_TELEFONO = "Ingresa un teléfono válido, con al menos 7 dígitos (ej. 5555-1234 o +502 5555 1234).";
 export const MENSAJE_CORREO = "Ingresa un correo válido, sin tildes ni espacios (ej. nombre@correo.com).";
+
+// Primer campo con error, en el orden en que aparecen en el formulario. Al enviar con errores
+// se le lleva el foco: así el lector de pantalla lee el campo y su mensaje (aria-describedby).
+export function primerCampoConError<K extends string>(errores: Record<K, string>, orden: readonly K[]): K | null {
+  return orden.find((campo) => errores[campo]) ?? null;
+}

@@ -11,6 +11,7 @@ import {
   MENSAJE_NOMBRE,
   MENSAJE_TELEFONO,
   NOMBRE_MAX,
+  primerCampoConError,
   TELEFONO_MAX,
 } from "../lib/validators";
 import { submitCotizacion } from "../lib/api";
@@ -41,6 +42,17 @@ const FAQS = [
 ];
 
 type ContactErrors = { name: string; phone: string; email: string };
+
+// Ids de los campos con validación (label for/id, mensaje de error y foco al primer error).
+const CAMPOS: Record<keyof ContactErrors, string> = { name: "contacto-nombre", phone: "contacto-telefono", email: "contacto-correo" };
+const ORDEN_CAMPOS = ["name", "phone", "email"] as const;
+
+// Props de accesibilidad de un campo con validación: aria-invalid y el mensaje asociado.
+const propsDeError = (campo: keyof ContactErrors, error: string) => ({
+  id: CAMPOS[campo],
+  "aria-invalid": error ? true : undefined,
+  "aria-describedby": error ? `${CAMPOS[campo]}-error` : undefined,
+});
 
 export default function Contacto() {
   const [form, setForm] = useState({
@@ -82,7 +94,12 @@ export default function Contacto() {
     };
     setErrors(nextErrors);
 
-    if (nextErrors.name || nextErrors.phone || nextErrors.email) return;
+    // Con errores, el foco va al primer campo inválido: el lector de pantalla lee el campo y su mensaje.
+    const conError = primerCampoConError(nextErrors, ORDEN_CAMPOS);
+    if (conError) {
+      document.getElementById(CAMPOS[conError])?.focus();
+      return;
+    }
 
     submittingRef.current = true;
     setSubmitting(true);
@@ -163,7 +180,7 @@ export default function Contacto() {
               <svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp ahora
             </a>
 
-            <h5 style={{ fontSize: "13px", textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", marginBottom: "14px" }}>Síguenos</h5>
+            <h3 style={{ fontFamily: "inherit", fontSize: "13px", textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", marginBottom: "14px" }}>Síguenos</h3>
             <div className="contact-socials">
               <a href="https://www.instagram.com/showcompany_gt" target="_blank" rel="noreferrer" style={{ background: "var(--ig-grad)" }} aria-label="Instagram">
                 <svg><use href="#i-ig" /></svg>
@@ -190,59 +207,86 @@ export default function Contacto() {
             <p style={{ gridColumn: "1/-1", fontSize: "12.5px", color: "var(--muted)", marginBottom: "6px" }}>
               Más de 25 años diseñando los mejores eventos de Guatemala.
             </p>
+            {/* Labels ocultos a la vista (.sr-only): el diseño sigue mostrando el placeholder, y el
+                lector de pantalla anuncia el nombre del campo aunque ya tenga texto. */}
             <div>
+              <label htmlFor={CAMPOS.name} className="sr-only">Nombre completo</label>
               <input
                 type="text"
                 placeholder="Nombre completo"
+                autoComplete="name"
                 maxLength={NOMBRE_MAX}
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
+                {...propsDeError("name", errors.name)}
               />
-              {errors.name && <span className="field-error">{errors.name}</span>}
+              {errors.name && <span id={`${CAMPOS.name}-error`} className="field-error">{errors.name}</span>}
             </div>
             <div>
+              <label htmlFor={CAMPOS.phone} className="sr-only">WhatsApp o teléfono directo</label>
               <input
                 type="tel"
                 placeholder="WhatsApp / Teléfono directo"
+                autoComplete="tel"
                 maxLength={TELEFONO_MAX}
                 value={form.phone}
                 onChange={(e) => updateField("phone", e.target.value)}
+                {...propsDeError("phone", errors.phone)}
               />
-              {errors.phone && <span className="field-error">{errors.phone}</span>}
+              {errors.phone && <span id={`${CAMPOS.phone}-error`} className="field-error">{errors.phone}</span>}
             </div>
             <div className="full">
+              <label htmlFor={CAMPOS.email} className="sr-only">Correo electrónico</label>
               <input
                 type="email"
                 placeholder="Correo electrónico corporativo o personal"
+                autoComplete="email"
                 maxLength={CORREO_MAX}
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
+                {...propsDeError("email", errors.email)}
               />
-              {errors.email && <span className="field-error">{errors.email}</span>}
+              {errors.email && <span id={`${CAMPOS.email}-error`} className="field-error">{errors.email}</span>}
             </div>
-            <select value={form.eventType} onChange={(e) => setForm({ ...form, eventType: e.target.value })}>
-              {EVENT_TYPES.map((opt) => (
-                <option key={opt}>{opt}</option>
-              ))}
-            </select>
-            <input
-              type="date"
-              placeholder="Fecha estimada del evento"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-            />
-            <textarea
-              className="full"
-              placeholder="Cuéntanos más detalles sobre tu evento..."
-              maxLength={2000}
-              value={form.details}
-              onChange={(e) => setForm({ ...form, details: e.target.value })}
-            />
+            {/* align-self:end: con el label visible de la fecha al lado, el desplegable queda alineado por abajo. */}
+            <div className="campo-alineado-abajo">
+              <label htmlFor="contacto-tipo-evento" className="sr-only">Tipo de evento</label>
+              <select id="contacto-tipo-evento" value={form.eventType} onChange={(e) => setForm({ ...form, eventType: e.target.value })}>
+                {EVENT_TYPES.map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              {/* Label visible: los navegadores no muestran el placeholder en type="date" (solo "dd/mm/aaaa"). */}
+              <label htmlFor="contacto-fecha" className="field-label">Fecha estimada del evento</label>
+              <input
+                id="contacto-fecha"
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </div>
+            <div className="full">
+              <label htmlFor="contacto-detalles" className="sr-only">Detalles de tu evento</label>
+              <textarea
+                id="contacto-detalles"
+                placeholder="Cuéntanos más detalles sobre tu evento..."
+                maxLength={2000}
+                value={form.details}
+                onChange={(e) => setForm({ ...form, details: e.target.value })}
+              />
+            </div>
             {submitSuccess && (
               <p className="full form-success">¡Recibimos tu solicitud! Te contactaremos pronto.</p>
             )}
+            {/* Aviso para lectores de pantalla: siempre en el DOM (si no, el cambio no siempre se anuncia).
+                Es absoluto (.sr-only), así que no ocupa una fila de la grilla. */}
+            <p className="sr-only" role="status">
+              {submitting ? "Enviando tu solicitud…" : submitSuccess ? "¡Recibimos tu solicitud! Te contactaremos pronto." : ""}
+            </p>
             <CampoTrampa value={form.sitioWeb} onChange={(sitioWeb) => setForm({ ...form, sitioWeb })} />
-            {submitError && <p className="full field-error">{submitError}</p>}
+            {submitError && <p className="full field-error" role="alert">{submitError}</p>}
 
             <button type="submit" className="btn btn-primary" disabled={submitting}>
               {submitting ? "Enviando..." : "Enviar solicitud"}

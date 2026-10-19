@@ -183,7 +183,7 @@ export default function Servicios() {
             <div className="acts-grid">
               {servicios.map((s) => (
                 <div className="act-card" key={s.id}>
-                  <h4>{s.nombre}</h4>
+                  <h3>{s.nombre}</h3>
                   <span className="act-includes"><strong>Incluye:</strong> {s.descripcion}</span>
                   <div className="act-meta">
                     <div className="act-price">

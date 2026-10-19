@@ -9,7 +9,7 @@ export default function Footer() {
         <div className="footer-top">
           <div>
             <div className="footer-brand">
-              <img src={logo} alt="Show Company" />
+              <img src={logo} alt="" />
               <span>SHOW COMPANY</span>
             </div>
             <p style={{ fontSize: "13px", lineHeight: 1.6, maxWidth: "260px" }}>
@@ -17,7 +17,7 @@ export default function Footer() {
             </p>
           </div>
           <div>
-            <h5>Enlaces rápidos</h5>
+            <h2>Enlaces rápidos</h2>
             <ul>
               <li><Link to="/">Inicio</Link></li>
               <li><Link to="/servicios">Servicios</Link></li>
@@ -28,7 +28,7 @@ export default function Footer() {
             </ul>
           </div>
           <div>
-            <h5>Servicios</h5>
+            <h2>Servicios</h2>
             <ul>
               <li>Quinceaños</li>
               <li>Bodas</li>
@@ -38,7 +38,7 @@ export default function Footer() {
             </ul>
           </div>
           <div>
-            <h5>Síguenos</h5>
+            <h2>Síguenos</h2>
             <div className="socials">
               <a href="https://www.facebook.com/showcompany" target="_blank" rel="noreferrer" className="s-fb" aria-label="Facebook">
                 <svg><use href="#i-fb" /></svg>

@@ -89,9 +89,18 @@ const TESTIMONIALS = [
 export default function Home() {
   const [current, setCurrent] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // El carrusel se pausa mientras el puntero o el foco del teclado están sobre el hero, y no
+  // avanza solo si el sistema pide menos movimiento (WCAG 2.2.2).
+  const pausadoRef = useRef(false);
+
+  const stop = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+  };
 
   const restart = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    stop();
+    if (pausadoRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     timerRef.current = setInterval(() => {
       setCurrent((c) => (c + 1) % SLIDES.length);
     }, 4500);
@@ -99,9 +108,7 @@ export default function Home() {
 
   useEffect(() => {
     restart();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return stop;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -110,9 +117,28 @@ export default function Home() {
     restart();
   };
 
+  const pausar = () => {
+    pausadoRef.current = true;
+    stop();
+  };
+  const reanudar = () => {
+    pausadoRef.current = false;
+    restart();
+  };
+
   return (
     <>
-      <section className="hero" id="inicio">
+      <section
+        className="hero"
+        id="inicio"
+        onMouseEnter={pausar}
+        onMouseLeave={reanudar}
+        onFocus={pausar}
+        onBlur={(e) => {
+          // Solo se reanuda cuando el foco sale del hero (no al pasar de un botón a otro dentro).
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) reanudar();
+        }}
+      >
         <div className="slides">
           {SLIDES.map((src, i) => (
             <div
@@ -169,7 +195,14 @@ export default function Home() {
 
         <div className="slide-dots">
           {SLIDES.map((_, i) => (
-            <button key={i} className={i === current ? "active" : ""} onClick={() => goTo(i)} />
+            <button
+              key={i}
+              type="button"
+              className={i === current ? "active" : ""}
+              aria-label={`Foto ${i + 1} de ${SLIDES.length}`}
+              aria-current={i === current ? "true" : undefined}
+              onClick={() => goTo(i)}
+            />
           ))}
         </div>
 
@@ -183,6 +216,9 @@ export default function Home() {
 
       <section className="promise">
         <div className="wrap">
+          {/* Encabezado de la sección solo para lectores de pantalla: sin él, los h3 de abajo
+              quedaban colgando directo del h1. */}
+          <h2 className="sr-only">Nuestra promesa</h2>
           <div className="promise-grid">
             <div className="promise-item">
               <div className="promise-icon"><svg><use href="#i-wand" /></svg></div>
@@ -223,31 +259,31 @@ export default function Home() {
           <div className="social-cards">
             <a href="https://www.instagram.com/showcompany_gt" target="_blank" rel="noreferrer" className="social-card sc-ig">
               <div className="sc-icon"><svg><use href="#i-ig" /></svg></div>
-              <h4>Instagram</h4>
+              <h3>Instagram</h3>
               <span>Reels y detrás de cámaras</span>
               <span className="sc-btn">Seguir</span>
             </a>
             <a href="https://www.tiktok.com/@showcompanygt" target="_blank" rel="noreferrer" className="social-card sc-tiktok">
               <div className="sc-icon"><svg><use href="#i-tiktok" /></svg></div>
-              <h4>TikTok</h4>
+              <h3>TikTok</h3>
               <span>Los momentos más virales</span>
               <span className="sc-btn">Seguir</span>
             </a>
             <a href="https://www.facebook.com/showcompany" target="_blank" rel="noreferrer" className="social-card sc-fb">
               <div className="sc-icon"><svg><use href="#i-fb" /></svg></div>
-              <h4>Facebook</h4>
+              <h3>Facebook</h3>
               <span>Álbumes completos de eventos</span>
               <span className="sc-btn">Seguir</span>
             </a>
             <a href="https://www.youtube.com/@showcompanygt" target="_blank" rel="noreferrer" className="social-card sc-yt">
               <div className="sc-icon"><svg><use href="#i-yt" /></svg></div>
-              <h4>YouTube</h4>
+              <h3>YouTube</h3>
               <span>Shows completos en video</span>
               <span className="sc-btn">Suscribirme</span>
             </a>
             <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="social-card sc-wa">
               <div className="sc-icon"><svg><use href="#i-whatsapp" /></svg></div>
-              <h4>WhatsApp</h4>
+              <h3>WhatsApp</h3>
               <span>Cotiza directo, sin vueltas</span>
               <span className="sc-btn">Escribir</span>
             </a>
@@ -305,7 +341,7 @@ export default function Home() {
             {WHY_ITEMS.map((item) => (
               <div className="why-item" key={item.title}>
                 <div className="why-icon"><svg><use href={`#${item.icon}`} /></svg></div>
-                <h4>{item.title}</h4>
+                <h3>{item.title}</h3>
                 <p>{item.text}</p>
               </div>
             ))}
@@ -323,7 +359,7 @@ export default function Home() {
             {STEPS.map((s) => (
               <div className="step" key={s.n}>
                 <div className="step-circle">{s.n}</div>
-                <h4>{s.title}</h4>
+                <h3>{s.title}</h3>
                 <p>{s.text}</p>
                 {s.n !== STEPS.length && <span className="step-arrow"><svg><use href="#i-arrow" /></svg></span>}
               </div>

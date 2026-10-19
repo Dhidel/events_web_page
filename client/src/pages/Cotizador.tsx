@@ -11,6 +11,7 @@ import {
   MENSAJE_NOMBRE,
   MENSAJE_TELEFONO,
   NOMBRE_MAX,
+  primerCampoConError,
   TELEFONO_MAX,
 } from "../lib/validators";
 import { fetchServicios, submitCotizacion, type Servicio } from "../lib/api";
@@ -25,6 +26,17 @@ import CampoTrampa from "../components/CampoTrampa";
 
 type ContactField = "name" | "phone" | "email";
 type ContactState = Record<ContactField, string>;
+
+// Ids de los campos de contacto (label for/id, mensaje de error y foco al primer error).
+const CAMPOS: ContactState = { name: "cotizador-nombre", phone: "cotizador-telefono", email: "cotizador-correo" };
+const ORDEN_CAMPOS = ["name", "phone", "email"] as const;
+
+// Props de accesibilidad de un campo con validación: id, aria-invalid y el mensaje asociado.
+const propsDeError = (campo: ContactField, error: string) => ({
+  id: CAMPOS[campo],
+  "aria-invalid": error ? true : undefined,
+  "aria-describedby": error ? `${CAMPOS[campo]}-error` : undefined,
+});
 
 // Estado del guardado al confirmar. WhatsApp solo se abre si la cotización quedó guardada.
 type Confirmacion =
@@ -151,7 +163,12 @@ export default function Cotizador() {
       email: isEmailValid(contact.email) ? "" : MENSAJE_CORREO,
     };
     setContactErrors(nextErrors);
-    if (nextErrors.name || nextErrors.phone || nextErrors.email) return;
+    // Con errores, el foco va al primer campo inválido: el lector de pantalla lee el campo y su mensaje.
+    const conError = primerCampoConError(nextErrors, ORDEN_CAMPOS);
+    if (conError) {
+      document.getElementById(CAMPOS[conError])?.focus();
+      return;
+    }
 
     guardandoRef.current = true;
     setConfirmacion({ estado: "guardando" });
@@ -245,7 +262,7 @@ export default function Cotizador() {
                   {servicios.map((servicio) => (
                     <div className="act-row" key={servicio.id}>
                       <div className="act-row-info">
-                        <h4>{servicio.nombre}</h4>
+                        <h3>{servicio.nombre}</h3>
                         {servicio.artistas !== undefined ? (
                           // Grupo (batucadas): el precio cubre 1 hora con N artistas y la cantidad cuenta grupos.
                           <>
@@ -265,6 +282,7 @@ export default function Cotizador() {
                         <button
                           type="button"
                           className="qty-btn qty-minus"
+                          aria-label={`Quitar ${servicio.artistas !== undefined ? "un grupo" : "uno"} de ${servicio.nombre}`}
                           onClick={() => changeQty(servicio.id, -1)}
                           disabled={guardando}
                         >
@@ -277,11 +295,14 @@ export default function Cotizador() {
                           min={0}
                           max={20}
                           readOnly
+                          // Solo muestra la cantidad: se cambia con +/–, así que no es una parada del Tab.
+                          tabIndex={-1}
                           aria-label={servicio.artistas !== undefined ? `Grupos de ${servicio.nombre}` : `Cantidad de ${servicio.nombre}`}
                         />
                         <button
                           type="button"
                           className="qty-btn qty-plus"
+                          aria-label={`Agregar ${servicio.artistas !== undefined ? "un grupo" : "uno"} de ${servicio.nombre}`}
                           onClick={() => changeQty(servicio.id, 1)}
                           disabled={guardando}
                         >
@@ -297,14 +318,17 @@ export default function Cotizador() {
             <div>
               <div className="quoter-panel">
                 <span className="eyebrow" style={{ color: "var(--blue-light)" }}><svg><use href="#i-sparkle" /></svg>Tu estimado</span>
-                <div style={{ fontSize: "42px", fontWeight: 900, margin: "10px 0 4px" }}>Q {total.toLocaleString("es-GT")}</div>
+                {/* aria-live: el lector de pantalla anuncia el total nuevo después de cada +/–. */}
+                <div aria-live="polite" aria-atomic="true" style={{ fontSize: "42px", fontWeight: 900, margin: "10px 0 4px" }}>
+                  <span className="sr-only">Total estimado: </span>Q {total.toLocaleString("es-GT")}
+                </div>
                 <p style={{ color: "rgba(255,255,255,.5)", fontSize: "12.5px", marginBottom: "24px" }}>
                   Suma de personajes seleccionados — no incluye traslado, montaje ni horas extra
                 </p>
 
                 <div style={{ borderTop: "1px solid rgba(255,255,255,.12)", paddingTop: "16px", display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px", color: "rgba(255,255,255,.8)", maxHeight: "260px", overflowY: "auto" }}>
                   {lines.length === 0 ? (
-                    <span style={{ color: "rgba(255,255,255,.4)" }}>Aún no has seleccionado personajes.</span>
+                    <span style={{ color: "rgba(255,255,255,.5)" }}>Aún no has seleccionado personajes.</span>
                   ) : (
                     lines.map((l) => (
                       <div key={l.id} style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
@@ -341,37 +365,49 @@ export default function Cotizador() {
                     <span className="eyebrow" style={{ color: "var(--blue-light)", marginBottom: 0 }}>
                       Tus datos de contacto
                     </span>
+                    {/* Labels ocultos a la vista (.sr-only): el diseño sigue mostrando el placeholder. */}
                     <div>
+                      <label htmlFor={CAMPOS.name} className="sr-only">Nombre completo</label>
                       <input
                         type="text"
+                        autoComplete="name"
                         placeholder="Nombre completo"
                         maxLength={NOMBRE_MAX}
                         value={contact.name}
                         onChange={(e) => updateContact("name", e.target.value)}
+                        {...propsDeError("name", contactErrors.name)}
                       />
-                      {contactErrors.name && <span className="field-error">{contactErrors.name}</span>}
+                      {contactErrors.name && <span id={`${CAMPOS.name}-error`} className="field-error">{contactErrors.name}</span>}
                     </div>
                     <div>
+                      <label htmlFor={CAMPOS.phone} className="sr-only">Teléfono</label>
                       <input
                         type="tel"
+                        autoComplete="tel"
                         placeholder="Teléfono"
                         maxLength={TELEFONO_MAX}
                         value={contact.phone}
                         onChange={(e) => updateContact("phone", e.target.value)}
+                        {...propsDeError("phone", contactErrors.phone)}
                       />
-                      {contactErrors.phone && <span className="field-error">{contactErrors.phone}</span>}
+                      {contactErrors.phone && <span id={`${CAMPOS.phone}-error`} className="field-error">{contactErrors.phone}</span>}
                     </div>
                     <div>
+                      <label htmlFor={CAMPOS.email} className="sr-only">Correo electrónico</label>
                       <input
                         type="email"
+                        autoComplete="email"
                         placeholder="Correo electrónico"
                         maxLength={CORREO_MAX}
                         value={contact.email}
                         onChange={(e) => updateContact("email", e.target.value)}
+                        {...propsDeError("email", contactErrors.email)}
                       />
-                      {contactErrors.email && <span className="field-error">{contactErrors.email}</span>}
+                      {contactErrors.email && <span id={`${CAMPOS.email}-error`} className="field-error">{contactErrors.email}</span>}
                     </div>
+                    <label htmlFor="cotizador-tipo-evento" className="sr-only">Tipo de evento</label>
                     <select
+                      id="cotizador-tipo-evento"
                       value={eventType}
                       onChange={(e) => {
                         setEventType(e.target.value);

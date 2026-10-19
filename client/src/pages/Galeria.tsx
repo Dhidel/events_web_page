@@ -80,7 +80,9 @@ export default function Galeria() {
             {FILTERS.map((f) => (
               <button
                 key={f.key}
+                type="button"
                 className={filter === f.key ? "filter-btn active" : "filter-btn"}
+                aria-pressed={filter === f.key}
                 onClick={() => setFilter(f.key)}
               >
                 {f.label}

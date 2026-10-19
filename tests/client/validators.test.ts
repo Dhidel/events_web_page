@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Elysia, t } from "elysia";
 import { errorHandler } from "../../src/lib/errors";
 import { CORREO_MAX, NOMBRE_MAX, NOMBRE_MIN, PHONE_REGEX, textoLibre } from "../../src/lib/validation";
-import { isEmailValid, isNameValid, isPhoneValid } from "../../client/src/lib/validators";
+import { isEmailValid, isNameValid, isPhoneValid, primerCampoConError } from "../../client/src/lib/validators";
 import { mensajeLegible } from "../../client/src/lib/api";
 
 // El formulario (client/src/lib/validators.ts) y la API tienen que aceptar y rechazar lo
@@ -92,5 +92,19 @@ describe("mensajeLegible", () => {
 
   test("deja igual cualquier otro mensaje", () => {
     expect(mensajeLegible("Selecciona al menos un personaje.")).toBe("Selecciona al menos un personaje.");
+  });
+});
+
+// Al enviar con errores, Contacto y Cotizador le pasan el foco al primer campo inválido ([12.3]).
+describe("primerCampoConError", () => {
+  const orden = ["name", "phone", "email"] as const;
+
+  test("devuelve el primero con error según el orden del formulario, no el del objeto", () => {
+    expect(primerCampoConError({ email: "x", phone: "y", name: "" }, orden)).toBe("phone");
+    expect(primerCampoConError({ name: "x", phone: "y", email: "z" }, orden)).toBe("name");
+  });
+
+  test("sin errores devuelve null", () => {
+    expect(primerCampoConError({ name: "", phone: "", email: "" }, orden)).toBeNull();
   });
 });

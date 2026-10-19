@@ -66,7 +66,7 @@ export default function Nosotros() {
             {STATS.map((s) => (
               <div className="why-item" key={s.title}>
                 <div className="why-icon" style={{ margin: "0 auto 12px" }}><svg><use href={`#${s.icon}`} /></svg></div>
-                <h4>{s.title}</h4>
+                <h3>{s.title}</h3>
                 <p>{s.text}</p>
               </div>
             ))}
@@ -105,7 +105,7 @@ export default function Nosotros() {
             {TEAM.map((t) => (
               <div className="team-card" key={t.title}>
                 <div className="team-icon"><svg><use href={`#${t.icon}`} /></svg></div>
-                <h4>{t.title}</h4>
+                <h3>{t.title}</h3>
                 <span>{t.text}</span>
               </div>
             ))}

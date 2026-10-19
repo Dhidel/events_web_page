@@ -77,6 +77,7 @@ const app = new Elysia()
     response: { 200: t.Object({ status: t.Literal("ok") }, { examples: [{ status: "ok" }] }) },
     detail: { tags: ["Público"], summary: "Estado del servidor", description: "Responde { status: \"ok\" } si el servidor está arriba." },
   })
+  .get("/ping", () => ({ message: "pong" }))
   .use(authRoutes)
   .use(galleryRoutes)
   .use(cotizacionesRoutes)

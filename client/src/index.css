@@ -675,7 +675,7 @@
        (texto sin enlace) usa la misma altura para que las columnas sigan parejas. */
     .footer-top ul{gap:0;}
     .footer-top li{min-height:44px;display:flex;align-items:center;}
-    .footer-top li a{display:flex;align-items:center;min-height:44px;}
+    .footer-top li a{display:flex;align-items:center;min-height:44px;min-width:44px;}
     /* Área táctil ampliada sin mover nada: el relleno agranda la zona y el margen negativo lo compensa. */
     .breadcrumb a{padding:13px 8px;margin:-13px -8px;}
     .quoter-traslado{padding:13px 0;margin:3px 0 -13px;}

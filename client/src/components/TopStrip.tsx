@@ -2,7 +2,8 @@ import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 export default function TopStrip() {
   return (
-    <div className="top-strip">
+    // <aside>: contenido complementario con nombre propio, así no queda fuera de todo landmark.
+    <aside className="top-strip" aria-label="Redes sociales">
       <div className="wrap">
         <span className="msg">
           <svg><use href="#i-star-fill" /></svg>
@@ -26,6 +27,6 @@ export default function TopStrip() {
           </a>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }

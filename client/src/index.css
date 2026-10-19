@@ -745,3 +745,30 @@
     html{scroll-behavior:auto;}
     *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
   }
+
+  /* ===== LIGHTBOX DE LA GALERÍA ([12.2]) ===== */
+  /* Botón transparente sobre cada foto (galería e Inicio): toda la foto abre el visor. No cambia cómo
+     se ve; el anillo de foco va hacia adentro porque la tarjeta recorta lo que sobresale. */
+  .gallery-abrir{position:absolute;inset:0;z-index:3;width:100%;height:100%;padding:0;border:0;background:transparent;cursor:zoom-in;border-radius:inherit;}
+  .gallery-abrir:focus-visible{outline:3px solid var(--blue-light);outline-offset:-3px;}
+  .lightbox{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:68px 16px 20px;background:rgba(0,0,0,.92);color:#fff;overscroll-behavior:contain;touch-action:pinch-zoom;animation:lightbox-entra .2s ease-out;}
+  .lightbox-figura{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:100%;}
+  .lightbox-img{max-width:min(1100px,100%);max-height:calc(100vh - 170px);max-height:calc(100dvh - 170px);object-fit:contain;border-radius:12px;}
+  .lightbox-pie{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:14px;font-weight:700;line-height:1.4;text-align:center;}
+  .lightbox-tag{font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.18);}
+  .lightbox-contador{font-size:12.5px;font-weight:600;color:rgba(255,255,255,.75);}
+  /* Controles de 44×44 (52 en escritorio), con borde visible sobre el fondo oscuro (≥3:1). */
+  .lightbox-btn{position:absolute;z-index:2;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.5);color:#fff;cursor:pointer;transition:.2s background;}
+  .lightbox-btn:hover{background:rgba(0,118,255,.7);}
+  .lightbox-btn svg{width:22px;height:22px;}
+  .lightbox-cerrar{top:12px;right:12px;}
+  .lightbox-anterior{left:12px;top:50%;transform:translateY(-50%);}
+  .lightbox-siguiente{right:12px;top:50%;transform:translateY(-50%);}
+  @media(min-width:1025px){
+    .lightbox-btn{width:52px;height:52px;}
+    .lightbox-cerrar{top:20px;right:20px;}
+    .lightbox-anterior{left:24px;}
+    .lightbox-siguiente{right:24px;}
+  }
+  @keyframes lightbox-entra{from{opacity:0;}to{opacity:1;}}
+  @media (prefers-reduced-motion: reduce){.lightbox{animation:none;}}

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
 import { fetchGallery, type GalleryImage } from "../lib/api";
+import Lightbox from "../components/Lightbox";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 const FILTERS: { key: string; label: string }[] = [
@@ -13,7 +14,7 @@ const FILTERS: { key: string; label: string }[] = [
   { key: "espectaculos", label: "Espectáculos" },
 ];
 
-function GalleryPhoto({ item, hidden }: { item: GalleryImage; hidden: boolean }) {
+function GalleryPhoto({ item, hidden, onAbrir }: { item: GalleryImage; hidden: boolean; onAbrir: () => void }) {
   const [estado, setEstado] = useState<"cargando" | "lista" | "error">("cargando");
 
   const classes = ["gallery-item"];
@@ -40,6 +41,8 @@ function GalleryPhoto({ item, hidden }: { item: GalleryImage; hidden: boolean })
       <span className="gallery-tag">{item.categoryLabel}</span>
       <span className="gallery-label">{item.label}</span>
       <span className="gallery-zoom"><svg><use href="#i-search" /></svg></span>
+      {/* Botón transparente sobre toda la foto: abre el lightbox con clic, Enter o Espacio. */}
+      <button type="button" className="gallery-abrir" aria-label={`Ver foto: ${item.alt}`} onClick={onAbrir} />
     </div>
   );
 }
@@ -48,6 +51,10 @@ export default function Galeria() {
   const [filter, setFilter] = useState("todos");
   const [items, setItems] = useState<GalleryImage[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  // Índice (dentro de las fotos del filtro activo) de la foto abierta en el lightbox.
+  const [abierta, setAbierta] = useState<number | null>(null);
+  const visibles = useMemo(() => items.filter((item) => filter === "todos" || item.category === filter), [items, filter]);
+  const cerrar = useCallback(() => setAbierta(null), []);
 
   useEffect(() => {
     fetchGallery()
@@ -105,9 +112,18 @@ export default function Galeria() {
                   key={item.id}
                   item={item}
                   hidden={filter !== "todos" && item.category !== filter}
+                  onAbrir={() => setAbierta(visibles.indexOf(item))}
                 />
               ))}
             </div>
+          )}
+          {abierta !== null && (
+            <Lightbox
+              fotos={visibles.map((item) => ({ src: item.imageUrl, alt: item.alt, label: item.label, tag: item.categoryLabel }))}
+              indice={abierta}
+              onCambiar={setAbierta}
+              onCerrar={cerrar}
+            />
           )}
         </div>
       </section>

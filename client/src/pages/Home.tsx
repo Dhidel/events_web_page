@@ -1,4 +1,4 @@
- import { useEffect, useRef, useState } from "react";
+ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import quinceAlicia from "../assets/img/quince-alicia.jpg";
 import espectaculosRobots from "../assets/img/espectaculos-robots.jpg";
@@ -11,6 +11,7 @@ import aveTematico from "../assets/img/ave-tematico.jpg";
 import animacionEvento from "../assets/img/animacion-evento.jpg";
 import bodasBn from "../assets/img/bodas-anillos-bn.jpg";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
+import Lightbox from "../components/Lightbox";
 
 const SLIDES = [quinceAlicia, espectaculosRobots, navidad, corporativo, quinceVivo];
 
@@ -92,6 +93,9 @@ export default function Home() {
   // El carrusel se pausa mientras el puntero o el foco del teclado están sobre el hero, y no
   // avanza solo si el sistema pide menos movimiento (WCAG 2.2.2).
   const pausadoRef = useRef(false);
+  // Foto de la vista previa de la galería abierta en el lightbox.
+  const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
+  const cerrarFoto = useCallback(() => setFotoAbierta(null), []);
 
   const stop = () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -379,15 +383,25 @@ export default function Home() {
             <Link to="/galeria" className="btn btn-primary">Ver galería completa<svg><use href="#i-arrow" /></svg></Link>
           </div>
           <div className="gallery-grid">
-            {GALLERY_TEASER.map((item) => (
+            {GALLERY_TEASER.map((item, i) => (
               <div className="gallery-item" key={item.alt}>
                 <img src={item.img} alt={item.alt} />
                 <span className="gallery-tag">{item.tag}</span>
                 <span className="gallery-label">{item.label}</span>
                 <span className="gallery-zoom"><svg><use href="#i-search" /></svg></span>
+                {/* Botón transparente sobre toda la foto: abre el lightbox con clic, Enter o Espacio. */}
+                <button type="button" className="gallery-abrir" aria-label={`Ver foto: ${item.alt}`} onClick={() => setFotoAbierta(i)} />
               </div>
             ))}
           </div>
+          {fotoAbierta !== null && (
+            <Lightbox
+              fotos={GALLERY_TEASER.map((item) => ({ src: item.img, alt: item.alt, label: item.label, tag: item.tag }))}
+              indice={fotoAbierta}
+              onCambiar={setFotoAbierta}
+              onCerrar={cerrarFoto}
+            />
+          )}
         </div>
       </section>
 

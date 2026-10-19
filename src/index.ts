@@ -40,6 +40,7 @@ const adminRoutes = new Elysia({ prefix: "/api/admin" })
   });
 
 const app = new Elysia()
+  .get("/ping", () => "pong")
   // Formato único de error { error } para todas las rutas (ver src/lib/errors.ts).
   .use(errorHandler)
   // Documentación de la API en /swagger (JSON de la especificación en /swagger/json).
@@ -90,7 +91,7 @@ const app = new Elysia()
 if (isProduction) app.use(servirFrontend(CLIENT_DIST));
 
 // Tope del body por petición (Bun responde 413 si se pasa; ver MAX_BODY_BYTES).
-app.listen({ port: PORT, maxRequestBodySize: MAX_BODY_BYTES });
+app.listen({ hostname: "0.0.0.0", port: PORT, maxRequestBodySize: MAX_BODY_BYTES });
 
 if (isProduction) {
   // Para comprobar al desplegar cómo se obtiene la IP del visitante (anti-spam [14.3]). Con un

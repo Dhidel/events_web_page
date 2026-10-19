@@ -116,9 +116,13 @@
   .hero-note svg{width:14px;height:14px;color:var(--blue-light);flex-shrink:0;}
   .hero-ctas{display:flex;gap:14px;flex-wrap:wrap;}
 
-  .slide-dots{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:9px;}
-  .slide-dots button{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.35);border:0;cursor:pointer;padding:0;transition:.25s all;}
-  .slide-dots button.active{background:#fff;width:26px;border-radius:6px;}
+  .slide-dots{position:absolute;bottom:10.5px;left:50%;transform:translateX(-50%);z-index:4;display:flex;}
+  /* El botón es el área de clic/toque (24×24; 44×44 en táctil) y el punto visible es el ::before,
+     con el mismo tamaño y a la misma altura que antes (centro a 22.5px del borde inferior). */
+  .slide-dots button{position:relative;width:24px;height:24px;border-radius:999px;background:transparent;border:0;cursor:pointer;padding:0;}
+  .slide-dots button::before{content:"";position:absolute;left:50%;top:50%;width:9px;height:9px;transform:translate(-50%,-50%);border-radius:50%;background:rgba(255,255,255,.35);transition:.25s all;}
+  .slide-dots button.active{width:34px;}
+  .slide-dots button.active::before{background:#fff;width:26px;border-radius:6px;}
   .slide-arrow{position:absolute;top:calc(50% - 30px);transform:translateY(-50%);z-index:4;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px);transition:.2s background;}
   .slide-arrow:hover{background:rgba(0,118,255,.7);}
   .slide-arrow svg{width:20px;height:20px;}
@@ -648,9 +652,6 @@
     .page-banner{padding:48px 0 36px;}
   }
 
-  /* Puntos del carrusel: mismo tamaño visual, área táctil ampliada. */
-  .slide-dots button{position:relative;}
-  .slide-dots button::before{content:"";position:absolute;top:-18px;bottom:-18px;left:-4px;right:-4px;}
 
   .service-detail-actions{display:flex;flex-wrap:wrap;gap:10px;}
 
@@ -660,16 +661,30 @@
     .quoter-panel{position:sticky;top:110px;max-height:calc(100vh - 130px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent;}
   }
 
+  /* Táctil (≤1024px): todo control mide al menos 44×44px ([12.2]). */
   @media(max-width:1024px){
-    .top-social a{width:40px;height:40px;}
+    .top-social a{width:44px;height:44px;}
     .top-social svg{width:16px;height:16px;}
-    .slide-dots{gap:16px;}
-    .slide-dots button::before{left:-8px;right:-8px;}
+    .socials a, .contact-socials a{width:44px;height:44px;}
+    .slide-dots{bottom:.5px;}
+    .slide-dots button, .slide-dots button.active{width:44px;height:44px;}
     .qty-btn{width:44px;height:44px;font-size:18px;}
+    .service-actions .btn, .act-card .btn{min-height:44px;}
+    .filter-btn{min-height:44px;}
+    /* Enlaces del pie: cada fila mide 44px (antes 18px + 10px de separación). La lista de servicios
+       (texto sin enlace) usa la misma altura para que las columnas sigan parejas. */
+    .footer-top ul{gap:0;}
+    .footer-top li{min-height:44px;display:flex;align-items:center;}
+    .footer-top li a{display:flex;align-items:center;min-height:44px;}
+    /* Área táctil ampliada sin mover nada: el relleno agranda la zona y el margen negativo lo compensa. */
+    .breadcrumb a{padding:13px 8px;margin:-13px -8px;}
+    .quoter-traslado{padding:13px 0;margin:3px 0 -13px;}
   }
   @media(max-width:680px){
     .whatsapp-fab{width:52px;height:52px;bottom:16px;right:16px;}
     .whatsapp-fab svg{width:25px;height:25px;}
+    /* El botón flotante de WhatsApp no tapa el final del pie de página. */
+    footer{padding-bottom:84px;}
   }
   /* Sin hover (táctil) el aviso de la miniatura se muestra siempre. */
   @media (hover:none){.gallery-admin-thumb-hint{opacity:1;}}

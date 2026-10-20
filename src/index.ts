@@ -18,8 +18,8 @@ await connectDB();
 
 const isProduction = process.env.NODE_ENV === "production";
 const CLIENT_DIST = "client/dist";
-// Los hostings asignan el puerto con PORT; en local queda 3000.
-const PORT = Number(process.env.PORT ?? 3000);
+// Los hostings (y Docker) asignan el puerto con PORT; si no viene, 8080.
+const PORT = Number(process.env.PORT ?? 8080);
 
 // Todo lo que empiece con /api/admin pasa primero por adminGuard (requiere JWT válido).
 const adminRoutes = new Elysia({ prefix: "/api/admin" })
@@ -40,7 +40,7 @@ const adminRoutes = new Elysia({ prefix: "/api/admin" })
   });
 
 const app = new Elysia()
-  .get("/ping", () => "pong")
+  .get("/ping", () => ({ ok: true }))
   // Formato único de error { error } para todas las rutas (ver src/lib/errors.ts).
   .use(errorHandler)
   // Documentación de la API en /swagger (JSON de la especificación en /swagger/json).

@@ -1,9 +1,9 @@
-
 node_modules
 client/node_modules
 .git
 .env
 .env.*
 !.env.example
+npm-debug.log*
 client/dist
 dist

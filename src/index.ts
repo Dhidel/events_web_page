@@ -88,7 +88,7 @@ const app = new Elysia()
 
 // Producción: también sirve el frontend (ver src/lib/frontend.ts). Las rutas /api/* que no
 // existen responden 404 { error }, no la página del sitio.
-if (isProduction) app.use(servirFrontend(CLIENT_DIST));
+if (isProduction) app.use(servirFrontend(CLIENT_DIST, { siteUrl: process.env.SITE_URL }));
 
 // Tope del body por petición (Bun responde 413 si se pasa; ver MAX_BODY_BYTES).
 app.listen({ hostname: "0.0.0.0", port: PORT, maxRequestBodySize: MAX_BODY_BYTES });

@@ -30,7 +30,7 @@ interface Opciones {
 
 // "https://midominio.com/" → "https://midominio.com". Devuelve null si no es un origen
 // (protocolo + dominio [+ puerto], sin ruta ni query).
-function normalizarOrigen(valor: string): string | null {
+export function normalizarOrigen(valor: string): string | null {
   const limpio = valor.trim().replace(/\/+$/, "");
   try {
     const url = new URL(limpio);

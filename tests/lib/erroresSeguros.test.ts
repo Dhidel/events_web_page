@@ -181,7 +181,10 @@ describe("frontend en producción: /api/* inexistente → 404 JSON; el resto sir
     await Bun.write(join(dist, "assets", "app.js"), "console.log('app')");
     // Servidor escuchando, como en producción (los archivos estáticos se registran al cargar
     // el plugin, que es asíncrono).
-    const app = new Elysia().use(errorHandler).get("/api/health", () => ({ status: "ok" })).use(servirFrontend(dist));
+    const app = new Elysia()
+      .use(errorHandler)
+      .get("/api/health", () => ({ status: "ok" }))
+      .use(servirFrontend(dist, { siteUrl: "https://www.midominio.com" }));
     await app.modules;
     app.listen(0);
     servidor = app;
@@ -200,16 +203,24 @@ describe("frontend en producción: /api/* inexistente → 404 JSON; el resto sir
     expect(res.headers.get("content-type")).toContain("application/json");
   });
 
-  test.each(["/apixyz", "/api-docs", "/cotizador", "/admin/dashboard", "/galeria"])("%s → página del sitio (200 HTML)", async (ruta) => {
+  test.each(["/cotizador", "/admin/dashboard", "/galeria"])("%s → página del sitio (200 HTML)", async (ruta) => {
     const res = await get(ruta);
     expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+  });
+
+  // Rutas que no son de la API ni del sitio: la página del sitio (React muestra su pantalla),
+  // pero con 404 para que los buscadores no las tomen como páginas reales ("soft 404").
+  test.each(["/apixyz", "/api-docs"])("%s → página del sitio con 404", async (ruta) => {
+    const res = await get(ruta);
+    expect(res.status).toBe(404);
     expect(await res.text()).toContain("<title>Sitio</title>");
   });
 
   test("las rutas reales de la API y los archivos estáticos siguen funcionando", async () => {
     expect(await (await get("/api/health")).json()).toEqual({ status: "ok" });
     expect(await (await get("/assets/app.js")).text()).toBe("console.log('app')");
-    expect(await (await get("/")).text()).toContain("<title>Sitio</title>");
+    expect((await get("/")).status).toBe(200);
   });
 
   test("esRutaApi", () => {

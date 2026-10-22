@@ -1,9 +1,10 @@
 import { Elysia, t } from "elysia";
 import { authJwt } from "../plugins/jwt";
 import { ErrorSchemas, errorResponses } from "../lib/apiSchemas";
-import { validarCredencialesAdmin } from "../services/auth.service";
+import { payloadDeSesion, validarCredencialesAdmin } from "../services/auth.service";
 import { rechazarCamposExtra } from "../lib/validation";
 import { limiteLogin } from "../lib/limiteSolicitudes";
+import { SESION_HORAS } from "../plugins/jwt";
 
 const GENERIC_LOGIN_ERROR = "Correo o contraseña incorrectos.";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -38,7 +39,7 @@ export const authRoutes = new Elysia().use(authJwt).post(
     const user = await validarCredencialesAdmin(email, body.password);
     if (!user) return rechazar();
 
-    const token = await jwt.sign({ id: user.id, email: user.email });
+    const token = await jwt.sign(payloadDeSesion(user));
     return { token };
   },
   {
@@ -49,7 +50,7 @@ export const authRoutes = new Elysia().use(authJwt).post(
     transform: [(ctx) => void limiteLogin.verificar(ctx), rechazarCamposExtra(LoginBody)],
     response: {
       200: t.Object(
-        { token: t.String({ description: "JWT válido por 7 días. Enviarlo como Authorization: Bearer <token>." }) },
+        { token: t.String({ description: `JWT válido por ${SESION_HORAS} horas. Enviarlo como Authorization: Bearer <token>.` }) },
         { examples: [{ token: "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6Ii4uLiJ9.abc123" }] }
       ),
       ...errorResponses(400, 422, 500),

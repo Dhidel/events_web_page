@@ -9,9 +9,9 @@ import { esRutaApi, servirFrontend } from "../../src/lib/frontend";
 import { redactPII } from "../../src/lib/privacy";
 import { MAX_BODY_BYTES } from "../../src/lib/seguridadHttp";
 import { GalleryImage } from "../../src/models/GalleryImage";
-import { authJwt } from "../../src/plugins/jwt";
 import { adminGalleryRoutes } from "../../src/routes/adminGallery";
 import { cloudinaryFalso } from "../helpers/cloudinaryFalso";
+import { asegurarAdminDePrueba, tokenDeAdminDePrueba } from "../helpers/adminDePrueba";
 
 // [14.4] Ningún error expone información interna al cliente, y los logs no llevan
 // credenciales ni datos personales.
@@ -91,14 +91,10 @@ describe("Cloudinary: el error llega genérico al cliente y sin la API key al lo
   const app = new Elysia().use(errorHandler).use(adminGalleryRoutes);
   let AUTH: Record<string, string>;
   beforeAll(async () => {
-    const token = await new Elysia()
-      .use(authJwt)
-      .get("/t", ({ jwt }) => jwt.sign({ id: "admin", email: "admin@example.com" }))
-      .handle(new Request("http://localhost/t"))
-      .then((r) => r.text());
-    AUTH = { Authorization: `Bearer ${token}` };
+    AUTH = { Authorization: `Bearer ${await tokenDeAdminDePrueba()}` };
   });
-  beforeEach(() => {
+  beforeEach(async () => {
+    await asegurarAdminDePrueba();
     cloudinaryFalso.fallarCon = new Error(`Unknown API key ${API_KEY}`);
   });
 
@@ -239,13 +235,9 @@ describe(`tope del body: ${MAX_BODY_BYTES / 1024 / 1024} MB (servidor real escuc
     const app = new Elysia().use(errorHandler).use(adminGalleryRoutes).listen({ port: 0, maxRequestBodySize: MAX_BODY_BYTES });
     servidor = app;
     puerto = app.server!.port!;
-    const token = await new Elysia()
-      .use(authJwt)
-      .get("/t", ({ jwt }) => jwt.sign({ id: "admin", email: "admin@example.com" }))
-      .handle(new Request("http://localhost/t"))
-      .then((r) => r.text());
-    AUTH = { Authorization: `Bearer ${token}` };
+    AUTH = { Authorization: `Bearer ${await tokenDeAdminDePrueba()}` };
   });
+  beforeEach(asegurarAdminDePrueba);
   afterAll(() => servidor.stop());
 
   test("una subida real de imagen de ~9 MB sigue funcionando (201)", async () => {

@@ -6,7 +6,6 @@ import { AdminUser } from "../../src/models/AdminUser";
 import { GalleryImage } from "../../src/models/GalleryImage";
 import { Servicio } from "../../src/models/Servicio";
 import { Solicitud } from "../../src/models/Solicitud";
-import { authJwt } from "../../src/plugins/jwt";
 import { adminCotizacionesRoutes } from "../../src/routes/adminCotizaciones";
 import { adminGalleryRoutes } from "../../src/routes/adminGallery";
 import { authRoutes } from "../../src/routes/auth";
@@ -14,6 +13,7 @@ import { cotizacionesRoutes } from "../../src/routes/cotizaciones";
 import { galleryRoutes } from "../../src/routes/gallery";
 import { serviciosRoutes } from "../../src/routes/servicios";
 import { cloudinaryFalso } from "../helpers/cloudinaryFalso";
+import { asegurarAdminDePrueba, tokenDeAdminDePrueba } from "../helpers/adminDePrueba";
 
 // [14.1] Validación global: al menos una petición inválida por endpoint que recibe datos.
 // Todas deben responder { error: "mensaje sencillo" } sin detalles internos de validación.
@@ -29,13 +29,9 @@ const app = new Elysia()
 
 let AUTH: Record<string, string>;
 beforeAll(async () => {
-  const token = await new Elysia()
-    .use(authJwt)
-    .get("/token", ({ jwt }) => jwt.sign({ id: "admin-de-prueba", email: "admin@example.com" }))
-    .handle(new Request("http://localhost/token"))
-    .then((r) => r.text());
-  AUTH = { Authorization: `Bearer ${token}` };
+  AUTH = { Authorization: `Bearer ${await tokenDeAdminDePrueba()}` };
 });
+beforeEach(asegurarAdminDePrueba);
 
 type Body = Record<string, unknown> | FormData | undefined;
 function pedir(metodo: string, ruta: string, body?: Body, headers: Record<string, string> = {}) {

@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 
-// CORS y HSTS de la API ([14.2]). Se arma aparte de index.ts para poder probarlo sin
+// CORS, HSTS y demás headers de seguridad ([14.2]). Se arma aparte de index.ts para poder probarlo sin
 // conectarse a la base ni levantar el servidor.
 
 export const DEV_ORIGIN = "http://localhost:5173";
@@ -9,6 +9,37 @@ export const DEV_ORIGIN = "http://localhost:5173";
 // 180 días. Sin includeSubDomains ni preload hasta conocer el dominio final: son difíciles
 // de revertir (el navegador del visitante lo recuerda).
 export const HSTS = "max-age=15552000";
+
+// Content-Security-Policy: de dónde puede cargar cosas el sitio. Si alguien lograra meter un
+// <script> en la página (XSS), el navegador no lo ejecuta ni lo deja mandar datos a otro
+// dominio. Lo único externo que usa el sitio: Google Fonts (CSS y fuentes) y las fotos de
+// la galería en Cloudinary. 'unsafe-inline' solo en estilos (los style={{...}} de React).
+// Si se agrega un servicio externo (p. ej. un video de YouTube embebido), hay que sumarlo aquí.
+export const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: https://res.cloudinary.com",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
+// Headers de seguridad que se envían en producción en todas las respuestas (API y sitio).
+export const HEADERS_SEGURIDAD = {
+  "strict-transport-security": HSTS,
+  "content-security-policy": CSP,
+  // Nadie puede mostrar el sitio dentro de un <iframe> (clickjacking del panel admin).
+  // frame-ancestors en la CSP hace lo mismo; este es para navegadores viejos.
+  "x-frame-options": "DENY",
+  // El navegador no "adivina" el tipo de un archivo: un JSON nunca se ejecuta como script.
+  "x-content-type-options": "nosniff",
+  // A otros sitios (WhatsApp, redes) solo se les dice el dominio de origen, nunca la ruta.
+  "referrer-policy": "strict-origin-when-cross-origin",
+} as const;
 
 // Tope del body por petición ([14.4]). Lo más grande que acepta la API es la subida de una
 // imagen de la galería (10 MB) más el resto del formulario; sin tope propio, Bun acepta hasta
@@ -82,11 +113,12 @@ export function seguridadHttp(opciones: Opciones) {
     );
   }
 
-  // HSTS solo en producción: le dice al navegador que use siempre HTTPS con este dominio.
-  // Solo tiene efecto si la respuesta llega por HTTPS (lo termina el hosting).
+  // Solo en producción: en desarrollo la CSP bloquearía /swagger (carga scripts de un CDN).
+  // HSTS le dice al navegador que use siempre HTTPS con este dominio; solo tiene efecto si la
+  // respuesta llega por HTTPS (lo termina el hosting).
   if (produccion) {
     plugin.onRequest(({ set }) => {
-      set.headers["strict-transport-security"] = HSTS;
+      Object.assign(set.headers, HEADERS_SEGURIDAD);
     });
   }
 

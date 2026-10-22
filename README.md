@@ -49,6 +49,19 @@ los orígenes permitidos de `CORS_ORIGIN`. La lógica está en `src/lib/segurida
 - **HTTPS:** el certificado y la redirección de `http://` a `https://` los hace el hosting.
   En producción la API envía `Strict-Transport-Security: max-age=15552000` (180 días), sin
   `includeSubDomains` ni `preload` hasta confirmar el dominio final.
+- **Headers de seguridad (solo en producción, en todas las respuestas):**
+  `Content-Security-Policy` (scripts solo del propio dominio; estilos y fuentes de Google
+  Fonts; imágenes propias, `data:` y de `res.cloudinary.com`; no se puede meter en un iframe),
+  `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` y
+  `Referrer-Policy: strict-origin-when-cross-origin`. **Si se agrega un servicio externo** (un
+  video de YouTube embebido, analytics, otra CDN de imágenes) hay que sumarlo a `CSP` en
+  `src/lib/seguridadHttp.ts` o el navegador lo bloquea.
+
+**Sesión del panel admin:** el JWT dura **12 horas** (`SESION_HORAS` en `src/plugins/jwt.ts`).
+Además de la firma, `adminGuard` revisa en la base que el admin siga existiendo y que el token
+sea de su `versionSesion` actual. Para cerrar todas las sesiones de un admin (p. ej. si perdió
+la laptop): `bun run revocar-sesiones` y escribir su correo; sus tokens dejan de servir al
+instante. Borrar al admin tiene el mismo efecto.
 
 ---
 
@@ -81,6 +94,19 @@ Además, una solicitud idéntica a otra de los últimos 10 minutos no se guarda 
   `CLIENT_IP_HEADER` ni `TRUST_PROXY_HOPS`, avisa que todos los visitantes compartirían el
   límite. La primera petición indica si la IP detectada es pública (correcto) o de red interna
   (es la del proxy: hay que corregir la configuración). Nunca se escribe la IP en el log.
+- **Antes de publicar (obligatorio):** configurar en el hosting `CLIENT_IP_HEADER` o
+  `TRUST_PROXY_HOPS` según cómo ese hosting entrega la IP (revisar su documentación):
+  - Delante hay Cloudflare: `CLIENT_IP_HEADER=cf-connecting-ip`.
+  - Fly.io: `CLIENT_IP_HEADER=fly-client-ip`.
+  - Un hosting que documenta un header propio con la IP del visitante y lo **sobrescribe**
+    siempre: ese header en `CLIENT_IP_HEADER`.
+  - Si no, un solo proxy que agrega la IP a `X-Forwarded-For` (lo más común): `TRUST_PROXY_HOPS=1`.
+
+  Después de desplegar, enviar un formulario y revisar el log: tiene que decir
+  `Primera IP de cliente detectada: es pública`. Si dice `CONFIGURACIÓN DE IP INCORRECTA`,
+  la configuración está mal. Con un valor equivocado pasa una de dos cosas: todos los
+  visitantes comparten el límite (5 envíos cada 10 minutos para todo el sitio) o un bot puede
+  inventar su IP y saltárselo.
 - **Limitaciones:** el contador vive en memoria: se reinicia al redesplegar y no se comparte
   entre varias instancias (con varias, habría que moverlo a Redis).
 

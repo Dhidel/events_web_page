@@ -14,9 +14,9 @@ describe("validarCredencialesAdmin", () => {
     adminId = admin.id;
   });
 
-  test("devuelve id y email con credenciales correctas", async () => {
+  test("devuelve id, email y versión de sesión con credenciales correctas", async () => {
     const resultado = await validarCredencialesAdmin(EMAIL, PASSWORD);
-    expect(resultado).toEqual({ id: adminId, email: EMAIL });
+    expect(resultado).toEqual({ id: adminId, email: EMAIL, versionSesion: 0 });
   });
 
   test("no expone la contraseña en el resultado", async () => {

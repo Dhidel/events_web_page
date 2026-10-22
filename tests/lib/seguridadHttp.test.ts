@@ -1,7 +1,11 @@
 import { describe, expect, mock, test } from "bun:test";
 import { Elysia } from "elysia";
 import { errorHandler } from "../../src/lib/errors";
-import { DEV_ORIGIN, HSTS, origenesPermitidos, seguridadHttp } from "../../src/lib/seguridadHttp";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { servirFrontend } from "../../src/lib/frontend";
+import { CSP, DEV_ORIGIN, HEADERS_SEGURIDAD, HSTS, origenesPermitidos, seguridadHttp } from "../../src/lib/seguridadHttp";
 
 // [14.2] CORS y HSTS. "Rechazado por CORS" = la respuesta no trae Access-Control-Allow-Origin
 // para ese origen, así que el navegador no deja que la página lea la respuesta.
@@ -71,9 +75,11 @@ describe("desarrollo", () => {
     expect((await get(app, PERMITIDO)).headers.get("access-control-allow-origin")).toBe(PERMITIDO);
   });
 
-  test("no envía HSTS", async () => {
+  test("no envía HSTS ni CSP (la CSP rompería /swagger)", async () => {
     const { app } = crearApp({ produccion: false });
-    expect((await get(app, DEV_ORIGIN)).headers.get("strict-transport-security")).toBeNull();
+    const res = await get(app, DEV_ORIGIN);
+    expect(res.headers.get("strict-transport-security")).toBeNull();
+    expect(res.headers.get("content-security-policy")).toBeNull();
   });
 });
 
@@ -102,6 +108,40 @@ describe("producción con CORS_ORIGIN", () => {
     const error = await get(app, PERMITIDO, "/api/boom");
     expect(error.status).toBe(500);
     expect(error.headers.get("strict-transport-security")).toBe("max-age=15552000");
+  });
+
+  test("envía todos los headers de seguridad, también en errores", async () => {
+    const { app } = crearApp({ produccion: true, corsOrigin });
+    for (const res of [await get(app, PERMITIDO), await get(app, PERMITIDO, "/api/boom")]) {
+      for (const [header, valor] of Object.entries(HEADERS_SEGURIDAD)) expect(res.headers.get(header)).toBe(valor);
+    }
+  });
+
+  test("la CSP bloquea scripts externos y iframes, y permite Google Fonts y Cloudinary", () => {
+    expect(CSP).toContain("script-src 'self';");
+    expect(CSP).toContain("frame-ancestors 'none'");
+    expect(CSP).toContain("connect-src 'self';");
+    expect(CSP).toContain("https://fonts.googleapis.com");
+    expect(CSP).toContain("https://fonts.gstatic.com");
+    expect(CSP).toContain("https://res.cloudinary.com");
+  });
+
+  test("las páginas del sitio (servirFrontend) también llevan los headers", async () => {
+    const dist = await mkdtemp(join(tmpdir(), "dist-"));
+    try {
+      await Bun.write(join(dist, "index.html"), "<!doctype html><title>x</title>");
+      await Bun.write(join(dist, "app.js"), "console.log(1)");
+      const app = new Elysia().use(seguridadHttp({ produccion: true, log: { warn() {}, log() {} } })).use(servirFrontend(dist));
+      await app.modules; // el plugin de archivos estáticos se arma de forma asíncrona
+      for (const ruta of ["/", "/app.js", "/admin/cotizaciones"]) {
+        const res = await app.handle(new Request(`http://localhost${ruta}`));
+        expect(res.status).toBe(200);
+        expect(res.headers.get("content-security-policy")).toBe(CSP);
+        expect(res.headers.get("x-frame-options")).toBe("DENY");
+      }
+    } finally {
+      await rm(dist, { recursive: true, force: true });
+    }
   });
 
   test("ignora con aviso los valores que no son un origen", () => {

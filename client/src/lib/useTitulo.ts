@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
-// Título de la pestaña por página (WCAG 2.4.2). En una SPA el <title> de index.html no cambia
-// solo al navegar: sin esto todas las rutas se llaman igual en pestañas, historial y lector de pantalla.
+// Título de la pestaña del panel admin (WCAG 2.4.2). Las páginas públicas no lo usan: su título
+// sale de data/paginas.ts y lo pone Layout.tsx (misma tabla que usa el servidor para el SEO).
 export const TITULO_SITIO = "Show Company";
 
 export function useTitulo(pagina: string) {

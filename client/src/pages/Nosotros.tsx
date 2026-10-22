@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import nosotrosBanner from "../assets/img/nosotros-banner.jpg";
 import quinceAlicia from "../assets/img/quince-alicia.jpg";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
-import { useTitulo } from "../lib/useTitulo";
 
 const STATS = [
   { icon: "i-star", title: "25 años", text: "de trayectoria formal en el mercado guatemalteco desde 2003" },
@@ -28,7 +27,6 @@ const TEAM = [
 ];
 
 export default function Nosotros() {
-  useTitulo("Nosotros");
   return (
     <>
       <section className="page-banner">

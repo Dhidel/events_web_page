@@ -12,7 +12,6 @@ import animacionEvento from "../assets/img/animacion-evento.jpg";
 import bodasBn from "../assets/img/bodas-anillos-bn.jpg";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 import Lightbox from "../components/Lightbox";
-import { useTitulo } from "../lib/useTitulo";
 
 const SLIDES = [quinceAlicia, espectaculosRobots, navidad, corporativo, quinceVivo];
 
@@ -94,7 +93,6 @@ const TESTIMONIALS = [
 ];
 
 export default function Home() {
-  useTitulo("Producción de eventos y entretenimiento en Guatemala");
   const [current, setCurrent] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // El carrusel se pausa mientras el puntero o el foco del teclado están sobre el hero, y no

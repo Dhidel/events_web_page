@@ -23,7 +23,6 @@ import {
   redondearMonto,
 } from "../lib/whatsapp";
 import CampoTrampa from "../components/CampoTrampa";
-import { useTitulo } from "../lib/useTitulo";
 
 type ContactField = "name" | "phone" | "email";
 type ContactState = Record<ContactField, string>;
@@ -52,7 +51,6 @@ type Confirmacion =
 const SAVE_TIMEOUT_MS = 15_000;
 
 export default function Cotizador() {
-  useTitulo("Cotizador");
   // Personajes/actos con precio, servidos desde /api/servicios (MongoDB).
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");

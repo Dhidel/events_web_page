@@ -18,7 +18,6 @@ import { submitCotizacion } from "../lib/api";
 import { guardarYAbrirWhatsApp } from "../lib/whatsapp";
 import CampoTrampa from "../components/CampoTrampa";
 import { generarEnlaceWhatsApp, generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
-import { useTitulo } from "../lib/useTitulo";
 
 const FAQS = [
   {
@@ -64,7 +63,6 @@ const propsDeError = (campo: keyof ContactErrors, error: string) => ({
 });
 
 export default function Contacto() {
-  useTitulo("Contacto");
   const [form, setForm] = useState({
     name: "",
     phone: "",

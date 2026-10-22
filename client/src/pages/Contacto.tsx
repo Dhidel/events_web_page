@@ -15,6 +15,7 @@ import {
   TELEFONO_MAX,
 } from "../lib/validators";
 import { submitCotizacion } from "../lib/api";
+import { guardarYAbrirWhatsApp } from "../lib/whatsapp";
 import CampoTrampa from "../components/CampoTrampa";
 import { generarEnlaceWhatsApp, generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
@@ -43,6 +44,13 @@ const FAQS = [
 
 type ContactErrors = { name: string; phone: string; email: string };
 
+// Envío guardado. waHref se conserva porque el formulario se vacía: el botón "Abrir WhatsApp"
+// lo necesita si el navegador bloqueó la pestaña (o el usuario la cerró).
+type EnvioExitoso = { whatsappAbierto: boolean; waHref: string };
+
+// Si el backend no responde en este tiempo se trata como error (igual que el Cotizador).
+const SAVE_TIMEOUT_MS = 15_000;
+
 // Ids de los campos con validación (label for/id, mensaje de error y foco al primer error).
 const CAMPOS: Record<keyof ContactErrors, string> = { name: "contacto-nombre", phone: "contacto-telefono", email: "contacto-correo" };
 const ORDEN_CAMPOS = ["name", "phone", "email"] as const;
@@ -67,7 +75,9 @@ export default function Contacto() {
   const [errors, setErrors] = useState<ContactErrors>({ name: "", phone: "", email: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [submitSuccess, setSubmitSuccess] = useState(false);
+  // 429: reintentar enseguida volvería a fallar, así que se ofrece WhatsApp directo.
+  const [submitLimite, setSubmitLimite] = useState(false);
+  const [exito, setExito] = useState<EnvioExitoso | null>(null);
   // Segunda capa contra doble envío (además del botón deshabilitado). Es un ref y no el
   // estado `submitting` porque dos clics en el mismo instante leen el mismo valor viejo
   // del estado; el ref cambia en el acto.
@@ -83,6 +93,9 @@ export default function Contacto() {
     });
   };
 
+  // No puede haber ningún await antes de guardarYAbrirWhatsApp: abre la pestaña de WhatsApp
+  // en el mismo clic. Si se abre después de esperar al servidor, el navegador la bloquea
+  // (Safari siempre; Chrome/Firefox a los pocos segundos). Ver lib/whatsapp.ts.
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submittingRef.current) return;
@@ -104,40 +117,45 @@ export default function Contacto() {
     submittingRef.current = true;
     setSubmitting(true);
     setSubmitError("");
-    setSubmitSuccess(false);
+    setSubmitLimite(false);
+    setExito(null);
 
-    try {
-      await submitCotizacion({
-        nombre: form.name.trim(),
-        telefono: form.phone.trim(),
-        correo: form.email.trim(),
-        mensaje: form.details.trim() || undefined,
-        tipoEvento: form.eventType !== EVENT_TYPES[0] ? form.eventType : undefined,
-        // El input type="date" ya entrega "YYYY-MM-DD" (o "" si no se eligió fecha).
-        fechaEvento: form.date || undefined,
-        origen: "contacto",
-        sitioWeb: form.sitioWeb || undefined,
-      });
+    const tipoEvento = form.eventType !== EVENT_TYPES[0] ? form.eventType : undefined;
+    // El input type="date" ya entrega "YYYY-MM-DD" (o "" si no se eligió fecha).
+    const fechaEvento = form.date || undefined;
+    const mensaje = form.details.trim() || undefined;
+    const waHref = generarEnlaceWhatsApp({ nombre: form.name.trim(), tipoEvento, fechaEvento, mensaje, origen: "contacto" });
 
-      // Generar y abrir el enlace de WhatsApp con los datos estructurados
-      const urlWA = generarEnlaceWhatsApp({
-        nombre: form.name.trim(),
-        tipoEvento: form.eventType !== EVENT_TYPES[0] ? form.eventType : undefined,
-        fechaEvento: form.date || undefined,
-        mensaje: form.details.trim() || undefined,
-        origen: "contacto",
-      });
+    // WhatsApp solo se abre si la solicitud quedó guardada; si falla, la pestaña se cierra.
+    const resultado = await guardarYAbrirWhatsApp({
+      waHref,
+      guardar: () =>
+        submitCotizacion(
+          {
+            nombre: form.name.trim(),
+            telefono: form.phone.trim(),
+            correo: form.email.trim(),
+            mensaje,
+            tipoEvento,
+            fechaEvento,
+            origen: "contacto",
+            sitioWeb: form.sitioWeb || undefined,
+          },
+          AbortSignal.timeout(SAVE_TIMEOUT_MS)
+        ),
+    });
 
-      window.open(urlWA, "_blank", "noopener,noreferrer");
+    submittingRef.current = false;
+    setSubmitting(false);
 
-      setSubmitSuccess(true);
-      setForm({ name: "", phone: "", email: "", eventType: EVENT_TYPES[0], date: "", details: "", sitioWeb: "" });
-    } catch (err) {
-      setSubmitError((err as Error).message);
-    } finally {
-      submittingRef.current = false;
-      setSubmitting(false);
+    if (!resultado.ok) {
+      setSubmitError(resultado.error);
+      setSubmitLimite(resultado.limite === true);
+      return;
     }
+
+    setExito({ whatsappAbierto: resultado.whatsappAbierto, waHref });
+    setForm({ name: "", phone: "", email: "", eventType: EVENT_TYPES[0], date: "", details: "", sitioWeb: "" });
   };
 
   return (
@@ -277,16 +295,34 @@ export default function Contacto() {
                 onChange={(e) => setForm({ ...form, details: e.target.value })}
               />
             </div>
-            {submitSuccess && (
-              <p className="full form-success">¡Recibimos tu solicitud! Te contactaremos pronto.</p>
+            {exito && (
+              // Botón de respaldo: un clic directo del usuario nunca lo bloquea el navegador.
+              <div className="full form-success">
+                <p>
+                  ¡Recibimos tu solicitud! Te contactaremos pronto.{" "}
+                  {exito.whatsappAbierto ? "¿No se abrió WhatsApp?" : "Continúa en WhatsApp:"}
+                </p>
+                <a href={exito.waHref} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ marginTop: "10px" }}>
+                  <svg><use href="#i-whatsapp" /></svg>Abrir WhatsApp
+                </a>
+              </div>
             )}
             {/* Aviso para lectores de pantalla: siempre en el DOM (si no, el cambio no siempre se anuncia).
                 Es absoluto (.sr-only), así que no ocupa una fila de la grilla. */}
             <p className="sr-only" role="status">
-              {submitting ? "Enviando tu solicitud…" : submitSuccess ? "¡Recibimos tu solicitud! Te contactaremos pronto." : ""}
+              {submitting ? "Enviando tu solicitud…" : exito ? "¡Recibimos tu solicitud! Te contactaremos pronto." : ""}
             </p>
             <CampoTrampa value={form.sitioWeb} onChange={(sitioWeb) => setForm({ ...form, sitioWeb })} />
-            {submitError && <p className="full field-error" role="alert">{submitError}</p>}
+            {submitError && (
+              <div className="full field-error" role="alert">
+                <p>{submitError}</p>
+                {submitLimite && (
+                  <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ marginTop: "10px" }}>
+                    <svg><use href="#i-whatsapp" /></svg>Escribirnos por WhatsApp
+                  </a>
+                )}
+              </div>
+            )}
 
             <button type="submit" className="btn btn-primary" disabled={submitting}>
               {submitting ? "Enviando..." : "Enviar solicitud"}

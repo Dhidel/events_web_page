@@ -24,3 +24,51 @@ export function siguienteFocoAtrapado(actual: number, total: number, haciaAtras:
   if (actual < 0) return haciaAtras ? total - 1 : 0;
   return indiceCircular(actual, haciaAtras ? -1 : 1, total);
 }
+
+// Botón "Atrás" (del navegador o el gesto/botón de Android) con el lightbox abierto: tiene que
+// cerrar la foto, no salir de la página. Para eso, al abrir se agrega una entrada al historial
+// (misma URL, marcada en el state) y "Atrás" la consume: llega un popstate y se cierra.
+// Si se cierra de otra forma (×, Esc, tocar fuera), se quita esa entrada con history.back(),
+// para que el siguiente "Atrás" sí lleve a la página anterior.
+//
+// Recibe history y window como parámetros para poder probarlo con bun test sin navegador.
+// Devuelve la función de limpieza (para el return de un useEffect).
+
+const MARCA_HISTORIAL = "lightboxAbierto";
+
+type Historial = Pick<History, "state" | "pushState" | "back">;
+type Ventana = Pick<Window, "addEventListener" | "removeEventListener">;
+
+const tieneMarca = (estado: unknown) =>
+  typeof estado === "object" && estado !== null && (estado as Record<string, unknown>)[MARCA_HISTORIAL] === true;
+
+// history.back() pendiente de un cierre. Se difiere un instante porque en desarrollo StrictMode
+// desmonta y vuelve a montar el componente enseguida: si el back() fuera inmediato, su popstate
+// llegaría al lightbox recién montado y lo cerraría. Al volver a montar, se cancela y se reusa
+// la entrada que ya estaba.
+let atrasPendiente: ReturnType<typeof setTimeout> | null = null;
+
+export function entradaHistorialLightbox(historial: Historial, ventana: Ventana, alVolver: () => void): () => void {
+  if (atrasPendiente !== null) {
+    clearTimeout(atrasPendiente);
+    atrasPendiente = null;
+  }
+  // Se conserva el state que haya (React Router guarda ahí su índice y su key).
+  if (!tieneMarca(historial.state)) historial.pushState({ ...(historial.state ?? {}), [MARCA_HISTORIAL]: true }, "");
+
+  const alPopstate = () => {
+    if (!tieneMarca(historial.state)) alVolver();
+  };
+  ventana.addEventListener("popstate", alPopstate);
+
+  return () => {
+    ventana.removeEventListener("popstate", alPopstate);
+    // Si la entrada sigue ahí, se cerró sin "Atrás": se quita.
+    if (tieneMarca(historial.state)) {
+      atrasPendiente = setTimeout(() => {
+        atrasPendiente = null;
+        historial.back();
+      }, 0);
+    }
+  };
+}

@@ -7,6 +7,7 @@ import {
   mensajeEstimado,
   redondearMonto,
 } from "../../client/src/lib/whatsapp";
+import { generarEnlaceWhatsApp } from "../../client/src/utils/whatsapp";
 
 // Flujo de Confirmar del Cotizador (client/src/lib/whatsapp.ts) con una pestaña falsa:
 // se revisa a dónde navega y si se cierra, sin necesitar un navegador.
@@ -265,5 +266,48 @@ describe("WhatsApp con el estimado que guardó el servidor", () => {
     expect(redondearMonto(0.1 * 3)).toBe(0.3);
     expect(redondearMonto(1999.99 * 3 + 0.1 * 7)).toBe(6000.67);
     expect(redondearMonto(7600)).toBe(7600);
+  });
+});
+
+// Formulario de Contacto (client/src/pages/Contacto.tsx). Antes guardaba, y *después* del await
+// llamaba a window.open(): el navegador bloqueaba la pestaña (Safari siempre) y WhatsApp no se
+// abría aunque la solicitud sí se guardaba. Ahora usa guardarYAbrirWhatsApp como el Cotizador.
+describe("Contacto → Enviar → WhatsApp", () => {
+  const fuente = () => Bun.file(new URL("../../client/src/pages/Contacto.tsx", import.meta.url)).text();
+
+  test("no abre WhatsApp con window.open() después de esperar al servidor", async () => {
+    const codigo = await fuente();
+    expect(codigo).not.toContain("window.open(");
+    expect(codigo).toContain("guardarYAbrirWhatsApp(");
+  });
+
+  test("no hay ningún await en handleSubmit antes de abrir la pestaña", async () => {
+    const codigo = await fuente();
+    const cuerpo = codigo.slice(codigo.indexOf("const handleSubmit"), codigo.indexOf("guardarYAbrirWhatsApp({"));
+    // El único await permitido es el de la propia llamada a guardarYAbrirWhatsApp.
+    expect(cuerpo.match(/\bawait\b/g)).toEqual(["await"]);
+    expect(cuerpo.trimEnd().endsWith("await")).toBe(true);
+  });
+
+  test("solicitud guardada: la pestaña abierta en el clic va al mensaje de contacto", async () => {
+    const pestana = pestanaFalsa();
+    const waHref = generarEnlaceWhatsApp({ nombre: "Ana López", tipoEvento: "Boda", origen: "contacto" });
+    const resultado = await guardarYAbrirWhatsApp({
+      waHref,
+      guardar: async () => ({ id: "1" }),
+      abrirPestana: () => pestana as unknown as Window,
+    });
+
+    expect(resultado).toMatchObject({ ok: true, whatsappAbierto: true });
+    expect(pestana.location.href).toBe(waHref);
+    expect(decodeURIComponent(pestana.location.href)).toContain("Me gustaría solicitar información");
+  });
+
+  test("navegador bloquea la pestaña: se guarda igual y la página muestra el botón de respaldo", async () => {
+    const guardar = mock(async () => ({ id: "1" }));
+    const resultado = await guardarYAbrirWhatsApp({ waHref: WA, guardar, abrirPestana: () => null });
+
+    expect(guardar).toHaveBeenCalledTimes(1);
+    expect(resultado).toMatchObject({ ok: true, whatsappAbierto: false });
   });
 });

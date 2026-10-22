@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type MouseEvent, type TouchEvent } from "react";
 import { createPortal } from "react-dom";
-import { indiceCircular, pasoPorDeslizamiento, siguienteFocoAtrapado } from "../lib/lightbox";
+import { entradaHistorialLightbox, indiceCircular, pasoPorDeslizamiento, siguienteFocoAtrapado } from "../lib/lightbox";
 
 export interface FotoLightbox {
   src: string;
@@ -15,6 +15,7 @@ export interface FotoLightbox {
 // - Mientras está abierto: el resto de la página queda inert (ni Tab ni lector de pantalla salen
 //   del diálogo), el foco da la vuelta entre los botones y el fondo no hace scroll. Al cerrar,
 //   el foco vuelve al botón que lo abrió.
+// - "Atrás" del navegador o del teléfono cierra la foto en vez de salir de la página.
 // - Con prefers-reduced-motion no hay animación de entrada (index.css).
 export default function Lightbox({
   fotos,
@@ -54,6 +55,10 @@ export default function Lightbox({
       anterior?.focus({ preventScroll: true });
     };
   }, []);
+
+  // "Atrás" cierra la foto (ver entradaHistorialLightbox). Si el efecto se repite (StrictMode o
+  // un onCerrar nuevo), se reusa la misma entrada del historial en vez de agregar otra.
+  useEffect(() => entradaHistorialLightbox(window.history, window, onCerrar), [onCerrar]);
 
   // Esc se escucha en el documento: cierra aunque el foco haya quedado fuera de un botón.
   useEffect(() => {

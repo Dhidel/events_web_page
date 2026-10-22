@@ -46,17 +46,15 @@ const formatQ = (monto: number) => `Q${monto.toLocaleString("es-GT")}`;
 
 // Lo que el cliente armó en el Cotizador (lo calcula el servidor al guardar). Llega como objeto
 // libre, así que se lee con cuidado: una solicitud vieja o de Contacto no lo trae.
-// fueraDeCapital: el cliente marcó que el evento es fuera de la Ciudad Capital (traslado aparte,
-// no incluido en el total).
 function leerCotizacion(
   detalle: Solicitud["detalleCotizador"]
-): { lineas: LineaCotizada[]; total: number; fueraDeCapital: boolean } | null {
+): { lineas: LineaCotizada[]; total: number } | null {
   if (!detalle || !Array.isArray(detalle.personajes) || typeof detalle.total !== "number") return null;
   const lineas = (detalle.personajes as Partial<LineaCotizada>[]).filter(
     (l): l is LineaCotizada =>
       typeof l?.nombre === "string" && typeof l.cantidad === "number" && typeof l.subtotal === "number"
   );
-  return { lineas, total: detalle.total, fueraDeCapital: detalle.fueraDeCapital === true };
+  return { lineas, total: detalle.total };
 }
 
 export default function AdminCotizaciones() {
@@ -262,9 +260,6 @@ export default function AdminCotizaciones() {
                             </li>
                           ))}
                         </ul>
-                        {cotizacion.fueraDeCapital && (
-                          <span className="cotiz-traslado">Fuera de la capital · traslado a cotizar aparte</span>
-                        )}
                       </div>
                     ) : (
                       "—"

@@ -45,19 +45,6 @@ describe("crearSolicitud → notificación por correo", () => {
     expect(consoleError).not.toHaveBeenCalled();
   });
 
-  test("cotización fuera de la capital: el correo avisa que el traslado se cotiza aparte", async () => {
-    const detalle = { personajes: [{ nombre: "Batucada Temática Chapina", cantidad: 1, precioUnitario: 3800, subtotal: 3800 }], total: 3800 };
-    await crearSolicitud({ ...CLIENTE, origen: "cotizador", detalleCotizador: { ...detalle, fueraDeCapital: true } });
-    await crearSolicitud({ ...CLIENTE, nombre: "Otro Cliente", origen: "cotizador", detalleCotizador: detalle });
-    await esperarNotificacion();
-
-    expect(resendFalso.enviados).toHaveLength(2);
-    const aviso = "Evento fuera de la Ciudad Capital: el traslado se cotiza aparte";
-    expect(resendFalso.enviados[0]!.html).toContain(aviso);
-    expect(resendFalso.enviados[0]!.html).toContain("Q3,800.00");
-    expect(resendFalso.enviados[1]!.html).not.toContain(aviso);
-  });
-
   const fallos = [
     [
       "Resend rechaza la API key (401)",

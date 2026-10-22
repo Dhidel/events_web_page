@@ -59,8 +59,6 @@ export default function Cotizador() {
   const [contact, setContact] = useState<ContactState>({ name: "", phone: "", email: "" });
   const [contactErrors, setContactErrors] = useState<ContactState>({ name: "", phone: "", email: "" });
   const [eventType, setEventType] = useState(EVENT_TYPES[0]);
-  // Evento fuera de la Ciudad Capital: no suma al total, solo avisa a ventas (traslado aparte).
-  const [fueraDeCapital, setFueraDeCapital] = useState(false);
   const [confirmacion, setConfirmacion] = useState<Confirmacion>({ estado: "inicial" });
   const [sitioWeb, setSitioWeb] = useState(""); // honeypot: siempre vacío para una persona real
   // Freno síncrono contra doble clic: el estado de React se actualiza después del clic.
@@ -114,7 +112,6 @@ export default function Cotizador() {
     setContact({ name: "", phone: "", email: "" });
     setContactErrors({ name: "", phone: "", email: "" });
     setEventType(EVENT_TYPES[0]);
-    setFueraDeCapital(false);
     setConfirmacion({ estado: "inicial" });
     // "Reiniciar" desaparece al vaciar la selección: el foco vuelve al inicio de la lista de personajes.
     tituloSeleccionRef.current?.focus();
@@ -155,12 +152,11 @@ export default function Cotizador() {
     const waHref = enlaceWhatsApp(
       mensajeEstimado(
         lines.map((l) => ({ nombre: l.name, cantidad: l.qty, subtotal: l.subtotal })),
-        total,
-        fueraDeCapital
+        total
       )
     );
     return { total, totalQty, lines, waHref };
-  }, [servicios, quantities, fueraDeCapital]);
+  }, [servicios, quantities]);
 
   const hasSelection = totalQty > 0;
 
@@ -191,7 +187,7 @@ export default function Cotizador() {
       waHref: (guardada) => {
         const estimado = leerEstimadoGuardado(guardada.detalleCotizador);
         return estimado
-          ? enlaceWhatsApp(mensajeEstimado(estimado.lineas, estimado.total, estimado.fueraDeCapital))
+          ? enlaceWhatsApp(mensajeEstimado(estimado.lineas, estimado.total))
           : waHref;
       },
       guardar: () =>
@@ -206,8 +202,6 @@ export default function Cotizador() {
             detalleCotizador: {
               personajes: lines.map((l) => ({ servicioId: l.id, nombre: l.name, cantidad: l.qty, subtotal: l.subtotal })),
               total,
-              // Solo se manda si está marcado. No cambia el total: el traslado se cotiza aparte.
-              fueraDeCapital: fueraDeCapital || undefined,
             },
             sitioWeb: sitioWeb || undefined,
           },
@@ -353,24 +347,6 @@ export default function Cotizador() {
                     ))
                   )}
                 </div>
-
-                <label className="quoter-traslado">
-                  <input
-                    type="checkbox"
-                    checked={fueraDeCapital}
-                    disabled={guardando}
-                    onChange={(e) => {
-                      setFueraDeCapital(e.target.checked);
-                      setConfirmacion((c) => (c.estado === "guardada" ? { estado: "inicial" } : c));
-                    }}
-                  />
-                  Mi evento es fuera de la Ciudad Capital
-                </label>
-                {fueraDeCapital && (
-                  <p className="quoter-traslado-nota" role="status">
-                    El traslado fuera de la Ciudad Capital se cotiza aparte, según la distancia y el día.
-                  </p>
-                )}
 
                 {hasSelection && (
                   <div className="quoter-contact">

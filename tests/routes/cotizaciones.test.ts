@@ -274,7 +274,7 @@ describe("POST /api/cotizaciones — detalles de entrada", () => {
   });
 });
 
-describe("POST /api/cotizaciones — batucadas temáticas y traslado fuera de la capital", () => {
+describe("POST /api/cotizaciones — batucadas temáticas", () => {
   // Catálogo real del seed (incluye las 4 batucadas temáticas), en el MongoDB en memoria.
   let ids: Record<string, string>;
 
@@ -319,51 +319,10 @@ describe("POST /api/cotizaciones — batucadas temáticas y traslado fuera de la
     expect(body.detalleCotizador.total).toBe(29000);
   });
 
-  test("fuera de la capital: no suma al total y la marca queda guardada para ventas", async () => {
-    const seleccion = [
-      { servicioId: ids["Batucada Temática Dominicana"]!, cantidad: 1 },
-      { servicioId: ids["Robots LED"]!, cantidad: 1 },
-    ];
-    const res = await cotizar(seleccion, { fueraDeCapital: true, total: 999999 });
-    expect(res.status).toBe(201);
-    const body = (await res.json()) as { id: string; detalleCotizador: Detalle & { fueraDeCapital?: boolean } };
-    expect(body.detalleCotizador.total).toBe(6300);
-    expect(body.detalleCotizador.fueraDeCapital).toBe(true);
-
-    const guardada = await Solicitud.findById(body.id).lean();
-    expect(guardada!.detalleCotizador).toMatchObject({ total: 6300, fueraDeCapital: true });
-  });
-
-  test("sin marcar (o false) no se guarda la marca, y el total es el mismo", async () => {
-    const seleccion = [{ servicioId: ids["Batucada Temática Dominicana"]!, cantidad: 1 }];
-    const res = await cotizar(seleccion, { fueraDeCapital: false });
-    const body = (await res.json()) as { detalleCotizador: Record<string, unknown> };
-    expect(body.detalleCotizador.total).toBe(3800);
-    expect(body.detalleCotizador).not.toHaveProperty("fueraDeCapital");
-  });
-
-  test("la misma selección con y sin traslado son dos solicitudes distintas (no se toma como duplicado)", async () => {
-    const seleccion = [{ servicioId: ids["Batucada Temática Chapina"]!, cantidad: 1 }];
-    await cotizar(seleccion);
-    await cotizar(seleccion, { fueraDeCapital: true });
-    expect(await Solicitud.countDocuments()).toBe(2);
-  });
-
-  test.each([
-    ["texto \"true\"", "true"],
-    ["número 1", 1],
-  ])("fueraDeCapital como %s se rechaza (422) y no se guarda nada", async (_caso, valor) => {
-    const res = await cotizar([{ servicioId: ids["Batucada Temática Chapina"]!, cantidad: 1 }], { fueraDeCapital: valor });
+  test("fueraDeCapital ya no existe: el servidor lo rechaza como campo no permitido (422) y no guarda nada", async () => {
+    const res = await cotizar([{ servicioId: ids["Batucada Temática Chapina"]!, cantidad: 1 }], { fueraDeCapital: true });
     expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: "Campos no permitidos: detalleCotizador.fueraDeCapital." });
     expect(await Solicitud.countDocuments()).toBe(0);
-  });
-
-  test("un campo extra junto a fueraDeCapital sigue respondiendo 422 ([14.1])", async () => {
-    const res = await cotizar([{ servicioId: ids["Batucada Temática Chapina"]!, cantidad: 1 }], {
-      fueraDeCapital: true,
-      costoTraslado: 0,
-    });
-    expect(res.status).toBe(422);
-    expect(await res.json()).toEqual({ error: "Campos no permitidos: detalleCotizador.costoTraslado." });
   });
 });

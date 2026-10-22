@@ -335,10 +335,6 @@
   .campo-trampa{position:absolute !important;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;}
   .quoter-error{display:flex;flex-direction:column;gap:10px;margin-top:16px;padding:14px;border-radius:12px;background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.45);}
   .quoter-error p{font-size:13px;line-height:1.5;color:#ffd0d0;}
-  /* Casilla "fuera de la Ciudad Capital": no suma al total, solo avisa a ventas. */
-  .quoter-traslado{display:flex;align-items:center;gap:10px;margin-top:16px;font-size:13px;color:rgba(255,255,255,.85);cursor:pointer;}
-  .quoter-traslado input{width:18px;height:18px;padding:0;margin:0;flex-shrink:0;accent-color:var(--blue);cursor:pointer;}
-  .quoter-traslado-nota{font-size:12.5px;line-height:1.5;color:#ffe08a;margin-top:8px;}
   .quoter-success{font-size:13px;line-height:1.5;color:var(--wa);font-weight:700;margin-top:12px;text-align:center;}
   .quoter-success a{color:#fff;text-decoration:underline;}
   /* aria-disabled: se ve deshabilitado pero conserva el foco (envíos en curso). */
@@ -570,6 +566,8 @@
   .admin-dash-fields label,.gallery-admin-fields label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
   .admin-dash-fields input,.admin-dash-fields select,.gallery-admin-fields input,.gallery-admin-fields select{margin-top:0;}
   .admin-dash-fields-row{display:grid;grid-template-columns:1fr 110px;gap:12px;}
+  /* Celular angosto: Categoría y Orden uno debajo del otro, para que el nombre de la categoría quepa completo. */
+  @media(max-width:420px){.admin-dash-fields-row{grid-template-columns:1fr;}}
 
   .admin-dash-drop{position:relative;display:flex;align-items:center;justify-content:center;text-align:center;min-height:150px;border:1.5px dashed var(--line);border-radius:12px;background:var(--surface);cursor:pointer;overflow:hidden;padding:10px;transition:.2s border-color;}
   .admin-dash-drop:hover{border-color:var(--blue);}
@@ -619,8 +617,6 @@
   .cotiz-email{font-size:12px;color:var(--muted);margin-top:2px;}
   .cotiz-detalle{min-width:200px;}
   .cotiz-detalle strong{font-weight:800;color:var(--ink);}
-  /* Marca de evento fuera de la Ciudad Capital (el traslado se cotiza aparte). */
-  .cotiz-traslado{display:inline-block;margin-top:6px;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:700;line-height:1.4;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.5);color:#fbbf24;} /* #b45309 daba ~2.8:1 sobre el fondo oscuro */
   .cotiz-detalle ul{list-style:none;margin:4px 0 0;padding:0;font-size:12px;line-height:1.5;color:var(--muted);}
   .cotiz-reveal{margin-left:0;padding:11px 10px;border:0;background:none;font:inherit;font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer;}
   .cotiz-estado-cell{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -642,7 +638,7 @@
 
   /* iOS hace zoom al enfocar campos con letra menor a 16px. El placeholder conserva su tamaño para no recortarse. */
   @media (pointer:coarse){
-    input,textarea,.qty-input,.cotiz-select{font-size:16px;}
+    input,textarea,select,.qty-input,.cotiz-select{font-size:16px;}
     input::placeholder,textarea::placeholder{font-size:14px;}
   }
 
@@ -692,8 +688,6 @@
     .footer-top li a{display:flex;align-items:center;min-height:44px;min-width:44px;}
     /* Área táctil ampliada sin mover nada: el relleno agranda la zona y el margen negativo lo compensa. */
     .breadcrumb a{padding:13px 8px;margin:-13px -8px;}
-    .quoter-traslado{padding:13px 0;margin:3px 0 -13px;}
-    .quoter-traslado + .quoter-traslado-nota{margin-top:13px;}
   }
   @media(max-width:680px){
     .whatsapp-fab{width:52px;height:52px;bottom:16px;right:16px;}

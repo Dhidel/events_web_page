@@ -5,7 +5,6 @@ export interface DetalleCotizadorWA {
     subtotal: number;
   }>;
   total?: number;
-  fueraDeCapital?: boolean;
 }
 
 export interface SolicitudWhatsApp {
@@ -49,11 +48,6 @@ export function construirMensajeWhatsApp(solicitud: SolicitudWhatsApp): string {
     if (typeof solicitud.detalleCotizador.total === "number") {
       lineas.push("");
       lineas.push(`💰 *Total estimado:* Q${solicitud.detalleCotizador.total.toLocaleString("es-GT")}`);
-    }
-
-    if (solicitud.detalleCotizador.fueraDeCapital) {
-      lineas.push("");
-      lineas.push("📍 _Nota: Evento fuera de la Ciudad Capital (traslado a cotizar aparte)_");
     }
   } else {
     lineas.push("👋 ¡Hola Show Company! Me gustaría solicitar información:");

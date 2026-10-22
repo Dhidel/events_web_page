@@ -106,16 +106,6 @@ function generarTemplateCorreo(solicitud: SolicitudParaCorreo): string {
         `
             : ""
         }
-
-        ${
-          detalle.fueraDeCapital === true
-            ? `
-          <p style="margin: 14px 0 0 0; padding: 10px 12px; background-color: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px; color: #92400e; font-size: 14px; font-weight: 600;">
-            Evento fuera de la Ciudad Capital: el traslado se cotiza aparte (no está incluido en el total).
-          </p>
-        `
-            : ""
-        }
       </div>
     `;
   }

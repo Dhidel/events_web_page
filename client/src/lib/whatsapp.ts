@@ -24,14 +24,12 @@ export interface LineaEstimado {
 // montos como 0.30000000000000004.
 export const redondearMonto = (monto: number) => Math.round((monto + Number.EPSILON) * 100) / 100;
 
-// Mensaje que el cliente manda por WhatsApp con su estimado. Si marcó que el evento es fuera
-// de la Ciudad Capital se avisa en una línea aparte (el traslado no está en el total).
-export function mensajeEstimado(lineas: LineaEstimado[], total: number, fueraDeCapital = false): string {
+// Mensaje que el cliente manda por WhatsApp con su estimado.
+export function mensajeEstimado(lineas: LineaEstimado[], total: number): string {
   return (
     "Hola! Usé el cotizador del sitio y me interesa este estimado:\n" +
     lineas.map((l) => `${l.cantidad}x ${l.nombre} (Q${l.subtotal.toLocaleString("es-GT")})`).join("\n") +
-    `\nTotal estimado: Q${total.toLocaleString("es-GT")}` +
-    (fueraDeCapital ? "\nMi evento es fuera de la Ciudad Capital (traslado a cotizar aparte)." : "")
+    `\nTotal estimado: Q${total.toLocaleString("es-GT")}`
   );
 }
 
@@ -41,14 +39,14 @@ export const enlaceWhatsApp = (mensaje: string) => `https://wa.me/${WHATSAPP_NUM
 // objeto libre; devuelve null si no tiene la forma esperada.
 export function leerEstimadoGuardado(
   detalle: unknown
-): { lineas: LineaEstimado[]; total: number; fueraDeCapital: boolean } | null {
-  const d = detalle as { personajes?: unknown; total?: unknown; fueraDeCapital?: unknown } | null | undefined;
+): { lineas: LineaEstimado[]; total: number } | null {
+  const d = detalle as { personajes?: unknown; total?: unknown } | null | undefined;
   if (!d || !Array.isArray(d.personajes) || typeof d.total !== "number") return null;
   const lineas = d.personajes as Partial<LineaEstimado>[];
   const validas = lineas.every(
     (l) => typeof l?.nombre === "string" && typeof l.cantidad === "number" && typeof l.subtotal === "number"
   );
-  return validas ? { lineas: lineas as LineaEstimado[], total: d.total, fueraDeCapital: d.fueraDeCapital === true } : null;
+  return validas ? { lineas: lineas as LineaEstimado[], total: d.total } : null;
 }
 
 // Pestaña de espera. Devuelve null si el navegador la bloqueó igual.

@@ -19,7 +19,6 @@ export interface SolicitudWhatsAppBackend {
     servicios?: ItemWhatsAppBackend[];
     items?: ItemWhatsAppBackend[];
     total?: number;
-    fueraDeCapital?: boolean;
   };
 }
 
@@ -58,11 +57,6 @@ export function construirMensajeWhatsApp(solicitud: SolicitudWhatsAppBackend): s
       if (typeof detalle.total === "number") {
         lineas.push("");
         lineas.push(`💰 *Total estimado:* Q${detalle.total.toLocaleString("es-GT")}`);
-      }
-
-      if (detalle.fueraDeCapital) {
-        lineas.push("");
-        lineas.push("📍 _Nota: Evento fuera de la Ciudad Capital (traslado a cotizar aparte)_");
       }
     } else {
       lineas.push("👋 ¡Hola Show Company! Me gustaría solicitar información:");

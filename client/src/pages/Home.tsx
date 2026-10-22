@@ -16,6 +16,11 @@ import { useTitulo } from "../lib/useTitulo";
 
 const SLIDES = [quinceAlicia, espectaculosRobots, navidad, corporativo, quinceVivo];
 
+// El carrusel da una vuelta completa (vuelve a la primera foto), se queda quieto un rato y luego
+// da otra vuelta: así no está en movimiento todo el tiempo mientras se lee la página.
+const INTERVALO_MS = 4500;
+const DESCANSO_MS = 33_000;
+
 const SERVICES = [
   {
     img: quinceVivo,
@@ -91,25 +96,42 @@ const TESTIMONIALS = [
 export default function Home() {
   useTitulo("Producción de eventos y entretenimiento en Guatemala");
   const [current, setCurrent] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // El carrusel se pausa mientras el puntero o el foco del teclado están sobre el hero, y no
   // avanza solo si el sistema pide menos movimiento (WCAG 2.2.2).
   const pausadoRef = useRef(false);
+  // Cambios automáticos hechos en la vuelta actual. Al llegar a SLIDES.length la vuelta terminó
+  // y toca el descanso de DESCANSO_MS antes de seguir.
+  const pasosRef = useRef(0);
   // Foto de la vista previa de la galería abierta en el lightbox.
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
   const cerrarFoto = useCallback(() => setFotoAbierta(null), []);
 
   const stop = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
+  };
+
+  // Programa el siguiente cambio: cada INTERVALO_MS durante la vuelta, o DESCANSO_MS si la vuelta
+  // ya terminó (después del descanso empieza una vuelta nueva). Pausar con el puntero/foco o
+  // cambiar de foto a mano no reinicia la cuenta: si estaba descansando, el descanso vuelve a empezar.
+  const programar = () => {
+    const descansando = pasosRef.current >= SLIDES.length;
+    timerRef.current = setTimeout(
+      () => {
+        if (descansando) pasosRef.current = 0;
+        pasosRef.current += 1;
+        setCurrent((c) => (c + 1) % SLIDES.length);
+        programar();
+      },
+      descansando ? DESCANSO_MS : INTERVALO_MS
+    );
   };
 
   const restart = () => {
     stop();
     if (pausadoRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    timerRef.current = setInterval(() => {
-      setCurrent((c) => (c + 1) % SLIDES.length);
-    }, 4500);
+    programar();
   };
 
   useEffect(() => {

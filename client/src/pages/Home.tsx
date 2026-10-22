@@ -12,6 +12,7 @@ import animacionEvento from "../assets/img/animacion-evento.jpg";
 import bodasBn from "../assets/img/bodas-anillos-bn.jpg";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 import Lightbox from "../components/Lightbox";
+import { useTitulo } from "../lib/useTitulo";
 
 const SLIDES = [quinceAlicia, espectaculosRobots, navidad, corporativo, quinceVivo];
 
@@ -88,6 +89,7 @@ const TESTIMONIALS = [
 ];
 
 export default function Home() {
+  useTitulo("Producción de eventos y entretenimiento en Guatemala");
   const [current, setCurrent] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // El carrusel se pausa mientras el puntero o el foco del teclado están sobre el hero, y no
@@ -154,7 +156,7 @@ export default function Home() {
         </div>
 
         <button className="slide-arrow prev" aria-label="Anterior" onClick={() => goTo(current - 1)}>
-          <svg><use href="#i-chevron" transform="scale(-1,1) translate(-24,0)" /></svg>
+          <svg className="icono-espejo"><use href="#i-chevron" /></svg>
         </button>
         <button className="slide-arrow next" aria-label="Siguiente" onClick={() => goTo(current + 1)}>
           <svg><use href="#i-chevron" /></svg>
@@ -365,7 +367,6 @@ export default function Home() {
                 <div className="step-circle">{s.n}</div>
                 <h3>{s.title}</h3>
                 <p>{s.text}</p>
-                {s.n !== STEPS.length && <span className="step-arrow"><svg><use href="#i-arrow" /></svg></span>}
               </div>
             ))}
           </div>

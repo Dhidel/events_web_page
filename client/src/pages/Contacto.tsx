@@ -18,6 +18,7 @@ import { submitCotizacion } from "../lib/api";
 import { guardarYAbrirWhatsApp } from "../lib/whatsapp";
 import CampoTrampa from "../components/CampoTrampa";
 import { generarEnlaceWhatsApp, generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
+import { useTitulo } from "../lib/useTitulo";
 
 const FAQS = [
   {
@@ -63,6 +64,7 @@ const propsDeError = (campo: keyof ContactErrors, error: string) => ({
 });
 
 export default function Contacto() {
+  useTitulo("Contacto");
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -324,7 +326,9 @@ export default function Contacto() {
               </div>
             )}
 
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {/* aria-disabled y no disabled: un botón deshabilitado pierde el foco y el teclado vuelve al
+                inicio de la página. El doble envío lo frena submittingRef en handleSubmit. */}
+            <button type="submit" className="btn btn-primary" aria-disabled={submitting || undefined}>
               {submitting ? "Enviando..." : "Enviar solicitud"}
               <svg><use href="#i-whatsapp" /></svg>
             </button>

@@ -11,6 +11,7 @@ import {
   type SolicitudEstado,
 } from "../lib/api";
 import { maskEmail, maskPhone } from "../lib/privacy";
+import { useTitulo } from "../lib/useTitulo";
 
 const ESTADOS: { value: SolicitudEstado; label: string; key: string }[] = [
   { value: "nuevo", label: "Nuevo", key: "nuevo" },
@@ -59,6 +60,7 @@ function leerCotizacion(
 }
 
 export default function AdminCotizaciones() {
+  useTitulo("Bandeja de cotizaciones · Panel administrativo");
   const navigate = useNavigate();
   const [items, setItems] = useState<Solicitud[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +144,7 @@ export default function AdminCotizaciones() {
   };
 
   return (
-    <div className="admin-dash admin-dash-wide">
+    <main className="admin-dash admin-dash-wide">
       <header className="admin-dash-head">
         <div className="admin-dash-head-brand">
           <img src={logo} alt="Show Company" />
@@ -179,6 +181,7 @@ export default function AdminCotizaciones() {
         <button
           type="button"
           className={filter === "" ? "cotiz-counter active" : "cotiz-counter"}
+          aria-pressed={filter === ""}
           onClick={() => setFilter("")}
         >
           <strong>{items.length}</strong>
@@ -193,6 +196,7 @@ export default function AdminCotizaciones() {
                 ? `cotiz-counter cotiz-counter-${e.key} active`
                 : `cotiz-counter cotiz-counter-${e.key}`
             }
+            aria-pressed={filter === e.value}
             onClick={() => setFilter(e.value)}
           >
             <strong>{counts[e.value]}</strong>
@@ -237,7 +241,12 @@ export default function AdminCotizaciones() {
                   <td data-label="Teléfono">
                     <span className="cotiz-nowrap">
                       {isRevealed ? item.telefono : maskPhone(item.telefono)}
-                      <button type="button" className="cotiz-reveal" onClick={() => toggleReveal(item.id)}>
+                      <button
+                        type="button"
+                        className="cotiz-reveal"
+                        aria-label={`${isRevealed ? "Ocultar" : "Ver"} teléfono y correo de ${item.nombre}`}
+                        onClick={() => toggleReveal(item.id)}
+                      >
                         {isRevealed ? "Ocultar" : "Ver"}
                       </button>
                     </span>
@@ -284,6 +293,7 @@ export default function AdminCotizaciones() {
                       </span>
                       <select
                         className="cotiz-select"
+                        aria-label={`Estado de la solicitud de ${item.nombre}`}
                         value={item.estado}
                         disabled={savingId === item.id}
                         onChange={(e) => changeEstado(item.id, e.target.value as SolicitudEstado)}
@@ -303,6 +313,6 @@ export default function AdminCotizaciones() {
           </table>
         </div>
       )}
-    </div>
+    </main>
   );
 }

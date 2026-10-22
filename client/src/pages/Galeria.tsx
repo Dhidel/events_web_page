@@ -4,6 +4,7 @@ import animacionEvento from "../assets/img/animacion-evento.jpg";
 import { fetchGallery, type GalleryImage } from "../lib/api";
 import Lightbox from "../components/Lightbox";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
+import { useTitulo } from "../lib/useTitulo";
 
 const FILTERS: { key: string; label: string }[] = [
   { key: "todos", label: "Todos" },
@@ -48,6 +49,7 @@ function GalleryPhoto({ item, hidden, onAbrir }: { item: GalleryImage; hidden: b
 }
 
 export default function Galeria() {
+  useTitulo("Galería");
   const [filter, setFilter] = useState("todos");
   const [items, setItems] = useState<GalleryImage[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");

@@ -7,6 +7,7 @@ import navidad from "../assets/img/navidad.jpg";
 import espectaculosRobots from "../assets/img/espectaculos-robots.jpg";
 import { fetchServicios, type Servicio } from "../lib/api";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
+import { useTitulo } from "../lib/useTitulo";
 
 const DETAILS = [
   {
@@ -96,6 +97,7 @@ function waLink(name: string, price: number | null) {
 }
 
 export default function Servicios() {
+  useTitulo("Servicios");
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 

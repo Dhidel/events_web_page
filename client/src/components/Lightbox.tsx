@@ -147,7 +147,7 @@ export default function Lightbox({
       {total > 1 && (
         <>
           <button type="button" className="lightbox-btn lightbox-anterior" aria-label="Foto anterior" onClick={() => cambiar(-1)}>
-            <svg aria-hidden="true"><use href="#i-chevron" transform="scale(-1,1) translate(-24,0)" /></svg>
+            <svg className="icono-espejo" aria-hidden="true"><use href="#i-chevron" /></svg>
           </button>
           <button type="button" className="lightbox-btn lightbox-siguiente" aria-label="Foto siguiente" onClick={() => cambiar(1)}>
             <svg aria-hidden="true"><use href="#i-chevron" /></svg>

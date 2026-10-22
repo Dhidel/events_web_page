@@ -21,7 +21,7 @@ export default function ScrollToTop() {
   // Accesibilidad: en una SPA el foco se queda en el enlace que se pulsó y el lector de
   // pantalla no se entera del cambio de página. Se le pasa el foco al h1 de la página nueva
   // (no en la primera carga). Se compara con la ruta anterior y no con un "es la primera vez"
-  // porque StrictMode corre los efectos dos veces al montar. El panel admin no tiene <main>.
+  // porque StrictMode corre los efectos dos veces al montar. El panel admin también usa <main>.
   const rutaAnterior = useRef(pathname);
   useEffect(() => {
     if (rutaAnterior.current === pathname) return;

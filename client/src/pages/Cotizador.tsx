@@ -23,6 +23,7 @@ import {
   redondearMonto,
 } from "../lib/whatsapp";
 import CampoTrampa from "../components/CampoTrampa";
+import { useTitulo } from "../lib/useTitulo";
 
 type ContactField = "name" | "phone" | "email";
 type ContactState = Record<ContactField, string>;
@@ -51,6 +52,7 @@ type Confirmacion =
 const SAVE_TIMEOUT_MS = 15_000;
 
 export default function Cotizador() {
+  useTitulo("Cotizador");
   // Personajes/actos con precio, servidos desde /api/servicios (MongoDB).
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -65,6 +67,10 @@ export default function Cotizador() {
   const [sitioWeb, setSitioWeb] = useState(""); // honeypot: siempre vacío para una persona real
   // Freno síncrono contra doble clic: el estado de React se actualiza después del clic.
   const guardandoRef = useRef(false);
+  // Foco después de una acción (WCAG 2.4.3): el botón pulsado desaparece al guardar o reiniciar, y
+  // sin esto el foco cae al <body> y el siguiente Tab empieza desde arriba de la página.
+  const mensajeResultadoRef = useRef<HTMLParagraphElement>(null);
+  const tituloSeleccionRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     fetchServicios()
@@ -112,7 +118,15 @@ export default function Cotizador() {
     setEventType(EVENT_TYPES[0]);
     setFueraDeCapital(false);
     setConfirmacion({ estado: "inicial" });
+    // "Reiniciar" desaparece al vaciar la selección: el foco vuelve al inicio de la lista de personajes.
+    tituloSeleccionRef.current?.focus();
   };
+
+  // Al terminar de guardar (bien o mal), el foco pasa al mensaje del resultado: el lector de
+  // pantalla lo lee y el siguiente Tab llega a "Abrir WhatsApp" o "Reintentar".
+  useEffect(() => {
+    if (confirmacion.estado === "guardada" || confirmacion.estado === "error") mensajeResultadoRef.current?.focus();
+  }, [confirmacion.estado]);
 
   const updateContact = (field: ContactField, value: string) => {
     setContact((c) => ({ ...c, [field]: value }));
@@ -242,7 +256,7 @@ export default function Cotizador() {
           <div className="contact-page-grid">
             <div>
               <span className="eyebrow on-light"><svg><use href="#i-sparkle" /></svg>Selecciona tus personajes</span>
-              <h2 style={{ fontSize: "24px", fontWeight: 900, marginBottom: "8px" }}>¿Qué quieres en tu evento?</h2>
+              <h2 ref={tituloSeleccionRef} tabIndex={-1} className="foco-programatico" style={{ fontSize: "24px", fontWeight: 900, marginBottom: "8px" }}>¿Qué quieres en tu evento?</h2>
               <p style={{ color: "var(--muted)", fontSize: "13.5px", marginBottom: "22px" }}>
                 Precios reales por personaje (las batucadas, por grupo), 1 hora de animación, dentro de la Ciudad
                 Capital.
@@ -426,7 +440,7 @@ export default function Cotizador() {
                   // 429: reintentar enseguida volvería a fallar, así que WhatsApp pasa a ser la opción
                   // principal (un enlace normal: no se abre ninguna pestaña por su cuenta).
                   <div className="quoter-error" role="alert">
-                    <p>
+                    <p ref={mensajeResultadoRef} tabIndex={-1} className="foco-programatico">
                       <strong>{confirmacion.mensaje}</strong> Mientras tanto, puedes escribirnos directo por
                       WhatsApp con tu selección.
                     </p>
@@ -450,7 +464,7 @@ export default function Cotizador() {
                   </div>
                 ) : hasSelection && confirmacion.estado === "error" ? (
                   <div className="quoter-error" role="alert">
-                    <p>
+                    <p ref={mensajeResultadoRef} tabIndex={-1} className="foco-programatico">
                       <strong>No pudimos guardar tu cotización.</strong> {confirmacion.mensaje} Tu selección sigue
                       aquí: puedes reintentar o escribirnos directo por WhatsApp.
                     </p>
@@ -477,7 +491,7 @@ export default function Cotizador() {
                   // un enlace directo a WhatsApp, que también sirve si el navegador no abrió la pestaña.
                   // Cambiar la selección o los datos vuelve a mostrar "Confirmar".
                   <>
-                    <p className="quoter-success" role="status">
+                    <p ref={mensajeResultadoRef} tabIndex={-1} className="quoter-success foco-programatico" role="status">
                       ¡Listo! Guardamos tu cotización.{" "}
                       {confirmacion.whatsappAbierto ? "¿No se abrió WhatsApp?" : "Continúa en WhatsApp:"}
                     </p>
@@ -503,7 +517,9 @@ export default function Cotizador() {
                     className="btn btn-primary"
                     style={{ width: "100%", justifyContent: "center", marginTop: "16px" }}
                     onClick={handleConfirm}
-                    disabled={guardando}
+                    // aria-disabled y no disabled: un botón deshabilitado pierde el foco. El doble
+                    // clic mientras se guarda lo frena guardandoRef en handleConfirm.
+                    aria-disabled={guardando || undefined}
                   >
                     <svg><use href="#i-whatsapp" /></svg>
                     {guardando ? "Guardando tu cotización…" : "Confirmar este estimado por WhatsApp"}

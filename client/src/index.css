@@ -305,8 +305,12 @@
   .contact-socials a{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;transition:.2s transform;}
   .contact-socials a:hover{transform:translateY(-3px);}
   .contact-socials svg{width:18px;height:18px;}
-  form{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  /* align-content:start: las filas no se estiran aunque la columna vecina sea más alta (quedaban huecos grandes
+     y el desplegable bajaba al fondo de su fila). */
+  form{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start;}
   form .full{grid-column:1/-1;}
+  /* Misma altura en todos los campos de una línea (el de fecha mide 49px por su icono de calendario). */
+  main form input:not([type=checkbox]):not([type=radio]), main form select{min-height:49px;}
   input, select, textarea{
     width:100%;padding:13px 15px;border-radius:10px;border:1.5px solid var(--line);
     font-family:inherit;font-size:14px;background:var(--surface);color:var(--ink);

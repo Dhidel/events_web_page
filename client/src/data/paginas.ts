@@ -21,14 +21,14 @@ export const PAGINAS_PUBLICAS: Record<string, PaginaPublica> = {
       "Personajes, actos y espectáculos por hora para quinceañeras, bodas, fiestas navideñas y eventos de empresa en Guatemala.",
   },
   "/cotizador": {
-    title: "Cotiza tu evento | Show Company",
+    title: "Precios de hora loca y shows para eventos | Show Company",
     description:
-      "Elige personajes y actos, y calcula al momento el precio de tu evento con nuestras tarifas por hora. Un asesor confirma el total por WhatsApp.",
+      "Cotiza en línea: elige personajes y actos y calcula al momento el precio de tu evento en Guatemala. Un asesor confirma el total por WhatsApp.",
   },
   "/galeria": {
-    title: "Galería de eventos | Show Company",
+    title: "Fotos de bodas, XV años y eventos en Guatemala | Show Company",
     description:
-      "Fotos de eventos reales de Show Company: bodas, quinceañeras, eventos corporativos y espectáculos. Filtra por categoría.",
+      "Fotos de eventos reales de Show Company: bodas, XV años, eventos corporativos, hora loca y espectáculos. Filtra por categoría.",
   },
   "/nosotros": {
     title: "Nosotros | Show Company",

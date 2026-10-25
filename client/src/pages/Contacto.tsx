@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import aveTematico from "../assets/img/ave-tematico.jpg";
+import { aveTematico } from "../assets/imagenes";
+import { FondoBanner } from "../components/Foto";
 import { EVENT_TYPES } from "../data/eventTypes";
 import {
   isNameValid,
@@ -161,7 +162,7 @@ export default function Contacto() {
   return (
     <>
       <section className="page-banner">
-        <div className="page-banner-bg" style={{ backgroundImage: `url('${aveTematico}')` }} />
+        <FondoBanner imagen={aveTematico} />
         <div className="wrap">
           <div className="breadcrumb">
             <Link to="/">Inicio</Link>

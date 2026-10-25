@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import logo from "../assets/img/logo.png";
+import { logo } from "../assets/imagenes";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 export default function Footer() {

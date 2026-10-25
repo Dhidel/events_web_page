@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import animacionEvento from "../assets/img/animacion-evento.jpg";
+import { animacionEvento } from "../assets/imagenes";
+import { FondoBanner } from "../components/Foto";
 import { fetchGallery, type GalleryImage } from "../lib/api";
+import { srcSetCloudinary, urlCloudinary } from "../lib/cloudinary";
 import Lightbox from "../components/Lightbox";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
+
+// Ancho de cada foto en .gallery-grid-big (3 columnas de 367px, 2 desde 1000px, 1 desde 680px).
+// Con object-fit: cover una foto horizontal 16:9 en una casilla de 230px de alto ocupa ~410px:
+// por eso 420px y no 367px, para que no se vea borrosa.
+const SIZES_GALERIA = "(max-width: 680px) calc(100vw - 48px), (max-width: 1000px) calc(50vw - 32px), 420px";
+const ANCHOS_LIGHTBOX = [800, 1200, 1600, 2000];
 
 const FILTERS: { key: string; label: string }[] = [
   { key: "todos", label: "Todos" },
@@ -31,7 +39,9 @@ function GalleryPhoto({ item, hidden, onAbrir }: { item: GalleryImage; hidden: b
       ) : (
         <img
           className={estado === "lista" ? "gallery-photo is-loaded" : "gallery-photo"}
-          src={item.imageUrl}
+          src={urlCloudinary(item.imageUrl, 800)}
+          srcSet={srcSetCloudinary(item.imageUrl)}
+          sizes={SIZES_GALERIA}
           alt={item.alt}
           loading="lazy"
           onLoad={() => setEstado("lista")}
@@ -68,7 +78,7 @@ export default function Galeria() {
   return (
     <>
       <section className="page-banner">
-        <div className="page-banner-bg" style={{ backgroundImage: `url('${animacionEvento}')` }} />
+        <FondoBanner imagen={animacionEvento} />
         <div className="wrap">
           <div className="breadcrumb">
             <Link to="/">Inicio</Link>
@@ -119,7 +129,13 @@ export default function Galeria() {
           )}
           {abierta !== null && (
             <Lightbox
-              fotos={visibles.map((item) => ({ src: item.imageUrl, alt: item.alt, label: item.label, tag: item.categoryLabel }))}
+              fotos={visibles.map((item) => ({
+                src: urlCloudinary(item.imageUrl, 2000),
+                srcSet: srcSetCloudinary(item.imageUrl, ANCHOS_LIGHTBOX),
+                alt: item.alt,
+                label: item.label,
+                tag: item.categoryLabel,
+              }))}
               indice={abierta}
               onCambiar={setAbierta}
               onCerrar={cerrar}

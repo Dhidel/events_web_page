@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/img/logo.png";
+import { logo } from "../assets/imagenes";
 import { useTitulo } from "../lib/useTitulo";
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "";

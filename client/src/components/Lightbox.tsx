@@ -4,6 +4,8 @@ import { entradaHistorialLightbox, indiceCircular, pasoPorDeslizamiento, siguien
 
 export interface FotoLightbox {
   src: string;
+  // Versiones por ancho (fotos de Cloudinary): el navegador elige según el ancho del visor.
+  srcSet?: string;
   alt: string;
   label?: string;
   tag?: string;
@@ -157,7 +159,14 @@ export default function Lightbox({
 
       <figure className="lightbox-figura">
         {/* key: al cambiar de foto se crea otra <img> y no se ve la anterior mientras carga la nueva. */}
-        <img key={foto.src} className="lightbox-img" src={foto.src} alt={foto.alt} />
+        <img
+          key={foto.src}
+          className="lightbox-img"
+          src={foto.src}
+          srcSet={foto.srcSet}
+          sizes={foto.srcSet ? "(max-width: 1100px) 100vw, 1100px" : undefined}
+          alt={foto.alt}
+        />
         <figcaption className="lightbox-pie">
           {foto.tag && <span className="lightbox-tag">{foto.tag}</span>}
           {foto.label && <span>{foto.label}</span>}

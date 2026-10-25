@@ -146,3 +146,19 @@ keys y tokens `Bearer`).
 **Type-check:** `bun run typecheck` corre los tres proyectos de TypeScript: el backend
 (`src` y `tests`, con los tipos de Bun de `@types/bun`), las pruebas de código del navegador
 (`tests/client`, que agrega los tipos del DOM) y `client/` (su propio `tsc -b`).
+
+# Peso de las imágenes
+
+Las fotos del sitio se editan en `client/imagenes-originales/` (no se publican tal cual).
+`bun run imagenes` (en `client/`) genera en `client/src/assets/img/` una versión WebP por
+ancho (480/720/960/1280, sin agrandar nunca la original) más la original como versión más
+grande, el logo a 192 px sin pérdida, `public/og-image.jpg` recomprimida y el módulo
+`client/src/assets/imagenes.ts` que importan las páginas. Cada versión se compara con la
+original (SSIM ≥ 0.98): si se nota la compresión, el script sube la calidad.
+
+Las páginas usan `<Foto>` (`client/src/components/Foto.tsx`) con `srcset` y un `sizes` que
+describe el ancho real en el CSS: si cambia el layout de una sección, hay que actualizar su
+`sizes` o el navegador elegirá una versión demasiado chica (borrosa) o demasiado grande.
+
+Las fotos de la galería (Cloudinary) se piden con `f_auto,q_auto,c_limit,w_N` desde
+`client/src/lib/cloudinary.ts`: la original subida no se modifica.

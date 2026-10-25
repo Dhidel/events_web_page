@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import corporativo from "../assets/img/corporativo.jpg";
-import quinceVivo from "../assets/img/quince-vivo.jpg";
-import bodasColor from "../assets/img/bodas-anillos-color.jpg";
-import navidad from "../assets/img/navidad.jpg";
-import espectaculosRobots from "../assets/img/espectaculos-robots.jpg";
+import {
+  bodasAnillosColor as bodasColor,
+  corporativo,
+  espectaculosRobots,
+  navidad,
+  quinceVivo,
+} from "../assets/imagenes";
+import Foto, { FondoBanner, SIZES_BANNER } from "../components/Foto";
 import { fetchServicios, type Servicio } from "../lib/api";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
+
+const BANNER = corporativo;
 
 const DETAILS = [
   {
@@ -111,7 +116,7 @@ export default function Servicios() {
   return (
     <>
       <section className="page-banner">
-        <div className="page-banner-bg" style={{ backgroundImage: `url('${corporativo}')` }} />
+        <FondoBanner imagen={BANNER} />
         <div className="wrap">
           <div className="breadcrumb">
             <Link to="/">Inicio</Link>
@@ -138,9 +143,18 @@ export default function Servicios() {
 
       <section style={{ paddingTop: "20px" }}>
         <div className="wrap">
-          {DETAILS.map((d) => (
+          {DETAILS.map((d, i) => (
             <div className={d.reverse ? "service-detail reverse" : "service-detail"} id={d.id} key={d.id}>
-              <div className="service-detail-media"><img src={d.img} alt={d.alt} /></div>
+              <div className="service-detail-media">
+                {/* .service-detail-media: media columna de .wrap (538px) o todo el ancho desde 900px. La primera ya se ve al entrar.
+                    La foto del banner pide el mismo sizes que el banner: así el navegador elige el mismo archivo y no la baja dos veces. */}
+                <Foto
+                  imagen={d.img}
+                  sizes={d.img === BANNER ? SIZES_BANNER : "(max-width: 900px) calc(100vw - 48px), 538px"}
+                  alt={d.alt}
+                  loading={i === 0 ? "eager" : "lazy"}
+                />
+              </div>
               <div className="service-detail-body">
                 <div className="service-icon-lg"><svg><use href={`#${d.icon}`} /></svg></div>
                 <h2>{d.title}</h2>

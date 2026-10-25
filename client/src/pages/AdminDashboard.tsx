@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/img/logo.png";
+import { logo } from "../assets/imagenes";
+import { urlCloudinary } from "../lib/cloudinary";
 import {
   adminFetch,
   clearAdminToken,
@@ -343,7 +344,7 @@ function GalleryCard({
   return (
     <div className="gallery-admin-card">
       <label className="gallery-admin-thumb">
-        <img src={preview ?? item.imageUrl} alt={alt} />
+        <img src={preview ?? urlCloudinary(item.imageUrl, 600)} alt={alt} />
         <span className="gallery-admin-thumb-hint">
           {file ? "Nueva imagen seleccionada" : "Reemplazar imagen"}
         </span>

@@ -43,7 +43,7 @@ async function main() {
     console.log(`Galería vaciada (${existing} imágenes eliminadas por --force).`);
   }
 
-  const imgDir = new URL("../../client/src/assets/img/", import.meta.url);
+  const imgDir = new URL("../../client/imagenes-originales/", import.meta.url);
 
   let order = 0;
   for (const item of SEED) {

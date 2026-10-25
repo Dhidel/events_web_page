@@ -98,7 +98,7 @@ describe("Cloudinary: el error llega genérico al cliente y sin la API key al lo
     cloudinaryFalso.fallarCon = new Error(`Unknown API key ${API_KEY}`);
   });
 
-  const JPG = () => Bun.file(new URL("../../client/src/assets/img/navidad.jpg", import.meta.url)).arrayBuffer();
+  const JPG = () => Bun.file(new URL("../../client/imagenes-originales/navidad.jpg", import.meta.url)).arrayBuffer();
   const formulario = async () => {
     const fd = new FormData();
     fd.append("image", new File([await JPG()], "a.jpg", { type: "image/jpeg" }));
@@ -241,7 +241,7 @@ describe(`tope del body: ${MAX_BODY_BYTES / 1024 / 1024} MB (servidor real escuc
   afterAll(() => servidor.stop());
 
   test("una subida real de imagen de ~9 MB sigue funcionando (201)", async () => {
-    const jpg = await Bun.file(new URL("../../client/src/assets/img/navidad.jpg", import.meta.url)).arrayBuffer();
+    const jpg = await Bun.file(new URL("../../client/imagenes-originales/navidad.jpg", import.meta.url)).arrayBuffer();
     // Un JPG real (la cabecera es la de verdad) completado hasta 9 MB.
     const imagen = new File([jpg, new Uint8Array(9 * 1024 * 1024 - jpg.byteLength)], "grande.jpg", { type: "image/jpeg" });
     expect(imagen.size).toBe(9 * 1024 * 1024);

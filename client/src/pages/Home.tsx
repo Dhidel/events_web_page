@@ -1,19 +1,27 @@
  import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import quinceAlicia from "../assets/img/quince-alicia.jpg";
-import espectaculosRobots from "../assets/img/espectaculos-robots.jpg";
-import navidad from "../assets/img/navidad.jpg";
-import corporativo from "../assets/img/corporativo.jpg";
-import quinceVivo from "../assets/img/quince-vivo.jpg";
-import bodasColor from "../assets/img/bodas-anillos-color.jpg";
-import carnavalPlumas from "../assets/img/carnaval-plumas.jpg";
-import aveTematico from "../assets/img/ave-tematico.jpg";
-import animacionEvento from "../assets/img/animacion-evento.jpg";
-import bodasBn from "../assets/img/bodas-anillos-bn.jpg";
+import {
+  animacionEvento,
+  aveTematico,
+  bodasAnillosBn as bodasBn,
+  bodasAnillosColor as bodasColor,
+  carnavalPlumas,
+  corporativo,
+  espectaculosRobots,
+  navidad,
+  quinceAlicia,
+  quinceVivo,
+} from "../assets/imagenes";
+import Foto from "../components/Foto";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 import Lightbox from "../components/Lightbox";
 
 const SLIDES = [quinceAlicia, espectaculosRobots, navidad, corporativo, quinceVivo];
+
+// Ancho que ocupa cada foto según el CSS (.services-grid y .gallery-grid en index.css): una columna
+// hasta 680px, dos hasta 1000px y 5 o 4 columnas dentro de .wrap (1180px - 48px de padding).
+const SIZES_SERVICIO = "(max-width: 680px) calc(100vw - 48px), (max-width: 1000px) calc(50vw - 33px), 212px";
+const SIZES_GALERIA = "(max-width: 680px) calc(100vw - 48px), (max-width: 1000px) calc(50vw - 32px), 271px";
 
 // El carrusel da una vuelta completa (vuelve a la primera foto), se queda quieto un rato y luego
 // da otra vuelta: así no está en movimiento todo el tiempo mientras se lee la página.
@@ -104,6 +112,18 @@ export default function Home() {
   // Foto de la vista previa de la galería abierta en el lightbox.
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
   const cerrarFoto = useCallback(() => setFotoAbierta(null), []);
+  // Al entrar solo se baja la primera foto del carrusel. Cuando ya cargó se agrega siempre la
+  // siguiente a la que se ve (el carrusel avanza solo hacia adelante), así cada cambio encuentra la
+  // foto lista y no se ve el fondo vacío. Las demás se piden al acercar el puntero o el foco a la
+  // flecha "anterior" o a un punto, antes del clic.
+  const [primeraLista, setPrimeraLista] = useState(false);
+  const [cargadas, setCargadas] = useState<number[]>([0]);
+  const precargar = useCallback((...indices: number[]) => {
+    setCargadas((prev) => (indices.every((i) => prev.includes(i)) ? prev : [...new Set([...prev, ...indices])]));
+  }, []);
+  useEffect(() => {
+    precargar(...(primeraLista ? [current, (current + 1) % SLIDES.length] : [current]));
+  }, [current, primeraLista, precargar]);
 
   const stop = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -166,16 +186,31 @@ export default function Home() {
         }}
       >
         <div className="slides">
-          {SLIDES.map((src, i) => (
-            <div
-              key={i}
-              className={i === current ? "slide active" : "slide"}
-              style={{ backgroundImage: `url('${src}')` }}
-            />
+          {/* Cubre toda la pantalla también en celular (alto x proporción): siempre la versión grande. */}
+          {SLIDES.map((imagen, i) => (
+            <div key={i} className={i === current ? "slide active" : "slide"}>
+              {(i === current || cargadas.includes(i)) && (
+                <img
+                  src={imagen.src}
+                  width={imagen.width}
+                  height={imagen.height}
+                  alt=""
+                  fetchPriority={i === 0 ? "high" : "low"}
+                  onLoad={i === 0 ? () => setPrimeraLista(true) : undefined}
+                  onError={i === 0 ? () => setPrimeraLista(true) : undefined}
+                />
+              )}
+            </div>
           ))}
         </div>
 
-        <button className="slide-arrow prev" aria-label="Anterior" onClick={() => goTo(current - 1)}>
+        <button
+          className="slide-arrow prev"
+          aria-label="Anterior"
+          onPointerEnter={() => precargar((current - 1 + SLIDES.length) % SLIDES.length)}
+          onFocus={() => precargar((current - 1 + SLIDES.length) % SLIDES.length)}
+          onClick={() => goTo(current - 1)}
+        >
           <svg className="icono-espejo"><use href="#i-chevron" /></svg>
         </button>
         <button className="slide-arrow next" aria-label="Siguiente" onClick={() => goTo(current + 1)}>
@@ -227,6 +262,9 @@ export default function Home() {
               className={i === current ? "active" : ""}
               aria-label={`Foto ${i + 1} de ${SLIDES.length}`}
               aria-current={i === current ? "true" : undefined}
+              onPointerEnter={() => precargar(i)}
+              onPointerDown={() => precargar(i)}
+              onFocus={() => precargar(i)}
               onClick={() => goTo(i)}
             />
           ))}
@@ -326,7 +364,7 @@ export default function Home() {
           <div className="services-grid">
             {SERVICES.map((s) => (
               <div className="service-card" key={s.anchor}>
-                <div className="service-img"><img src={s.img} alt={s.alt} /></div>
+                <div className="service-img"><Foto imagen={s.img} sizes={SIZES_SERVICIO} alt={s.alt} loading="lazy" /></div>
                 <div className="service-body">
                   <div className="service-icon"><svg><use href={`#${s.icon}`} /></svg></div>
                   <h3>{s.title}</h3>
@@ -406,7 +444,7 @@ export default function Home() {
           <div className="gallery-grid">
             {GALLERY_TEASER.map((item, i) => (
               <div className="gallery-item" key={item.alt}>
-                <img src={item.img} alt={item.alt} />
+                <Foto imagen={item.img} sizes={SIZES_GALERIA} alt={item.alt} loading="lazy" />
                 <span className="gallery-tag">{item.tag}</span>
                 <span className="gallery-label">{item.label}</span>
                 <span className="gallery-zoom"><svg><use href="#i-search" /></svg></span>
@@ -417,7 +455,7 @@ export default function Home() {
           </div>
           {fotoAbierta !== null && (
             <Lightbox
-              fotos={GALLERY_TEASER.map((item) => ({ src: item.img, alt: item.alt, label: item.label, tag: item.tag }))}
+              fotos={GALLERY_TEASER.map((item) => ({ src: item.img.src, alt: item.alt, label: item.label, tag: item.tag }))}
               indice={fotoAbierta}
               onCambiar={setFotoAbierta}
               onCerrar={cerrarFoto}

@@ -66,8 +66,8 @@ const largo = (n: number) => "x".repeat(n);
 const ID_INEXISTENTE = new Types.ObjectId().toString();
 
 // Imágenes de prueba (bytes reales: Elysia revisa el contenido, no solo el tipo declarado).
-const JPG = await Bun.file(new URL("../../client/src/assets/img/navidad.jpg", import.meta.url)).arrayBuffer();
-const PNG = await Bun.file(new URL("../../client/src/assets/img/logo.png", import.meta.url)).arrayBuffer();
+const JPG = await Bun.file(new URL("../../client/imagenes-originales/navidad.jpg", import.meta.url)).arrayBuffer();
+const PNG = await Bun.file(new URL("../../client/imagenes-originales/logo.png", import.meta.url)).arrayBuffer();
 const WEBP = Buffer.from("UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==", "base64"); // 1×1
 const GIF = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"); // 1×1
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';

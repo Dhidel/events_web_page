@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import nosotrosBanner from "../assets/img/nosotros-banner.jpg";
-import quinceAlicia from "../assets/img/quince-alicia.jpg";
+import { nosotrosBanner, quinceAlicia } from "../assets/imagenes";
+import Foto, { FondoBanner } from "../components/Foto";
 import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 const STATS = [
@@ -30,7 +30,7 @@ export default function Nosotros() {
   return (
     <>
       <section className="page-banner">
-        <div className="page-banner-bg" style={{ backgroundImage: `url('${nosotrosBanner}')` }} />
+        <FondoBanner imagen={nosotrosBanner} />
         <div className="wrap">
           <div className="breadcrumb">
             <Link to="/">Inicio</Link>
@@ -45,7 +45,10 @@ export default function Nosotros() {
 
       <section>
         <div className="wrap story-grid">
-          <div className="story-media"><img src={quinceAlicia} alt="Producción temática de Show Company" /></div>
+          <div className="story-media">
+            {/* 538x420 con object-fit: cover: una foto 4:3 se recorta por los lados, ocupa 560px de ancho. */}
+            <Foto imagen={quinceAlicia} sizes="(max-width: 900px) calc(100vw - 48px), 560px" alt="Producción temática de Show Company" />
+          </div>
           <div className="story-body">
             <span className="eyebrow on-light"><svg><use href="#i-sparkle" /></svg>Cómo empezamos</span>
             <h2 style={{ fontSize: "28px", fontWeight: 900, marginBottom: "16px" }}>De una visión clara a una empresa formal</h2>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import animacionEvento from "../assets/img/animacion-evento.jpg";
+import { animacionEvento } from "../assets/imagenes";
+import { FondoBanner } from "../components/Foto";
 import { EVENT_TYPES } from "../data/eventTypes";
 import {
   isNameValid,
@@ -230,7 +231,7 @@ export default function Cotizador() {
   return (
     <>
       <section className="page-banner">
-        <div className="page-banner-bg" style={{ backgroundImage: `url('${animacionEvento}')` }} />
+        <FondoBanner imagen={animacionEvento} />
         <div className="wrap">
           <div className="breadcrumb">
             <Link to="/">Inicio</Link>

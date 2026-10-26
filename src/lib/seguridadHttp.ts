@@ -12,14 +12,14 @@ export const HSTS = "max-age=15552000";
 
 // Content-Security-Policy: de dónde puede cargar cosas el sitio. Si alguien lograra meter un
 // <script> en la página (XSS), el navegador no lo ejecuta ni lo deja mandar datos a otro
-// dominio. Lo único externo que usa el sitio: Google Fonts (CSS y fuentes) y las fotos de
-// la galería en Cloudinary. 'unsafe-inline' solo en estilos (los style={{...}} de React).
+// dominio. Lo único externo que usa el sitio: las fotos de la galería en Cloudinary (las
+// fuentes se sirven desde el propio sitio, client/src/assets/fonts). 'unsafe-inline' solo en estilos (los style={{...}} de React).
 // Si se agrega un servicio externo (p. ej. un video de YouTube embebido), hay que sumarlo aquí.
 export const CSP = [
   "default-src 'self'",
   "script-src 'self'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self' data: https://res.cloudinary.com",
   "connect-src 'self'",
   "object-src 'none'",

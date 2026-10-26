@@ -1,5 +1,8 @@
 import type { ImgHTMLAttributes } from "react";
 import type { ImagenResponsiva } from "../assets/imagenes";
+import { SIZES_BANNER } from "../data/paginas";
+
+export { SIZES_BANNER };
 
 // <img> con srcset: el navegador baja la versión más chica que cubre el tamaño en pantalla.
 // `sizes` debe describir el ancho real que ocupa la foto según el CSS; si se queda corto, se
@@ -23,12 +26,9 @@ export default function Foto({
   );
 }
 
-// En celular el banner mide ~390x545: con object-fit: cover una foto 4:3 se escala por el alto y
-// ocupa ~730px de ancho (se recorta por los lados), no 100vw.
-export const SIZES_BANNER = "(max-width: 680px) 730px, 100vw";
-
 // Fondo de .page-banner: ocupa todo el ancho y es lo primero que se ve, así que se pide con
-// prioridad alta. Es decorativo (alt vacío); el oscurecido lo pone .page-banner-bg::after.
+// prioridad alta (el servidor además la precarga con el mismo SIZES_BANNER; ver
+// data/paginas.ts). Es decorativo (alt vacío); el oscurecido lo pone .page-banner-bg::after.
 export function FondoBanner({ imagen }: { imagen: ImagenResponsiva }) {
   return (
     <div className="page-banner-bg">

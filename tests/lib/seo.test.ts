@@ -22,6 +22,12 @@ async function levantar(siteUrl: string | undefined) {
   await Bun.write(join(dist, "index.html"), INDEX);
   await Bun.write(join(dist, "assets", "app.js"), "console.log('app')");
   await Bun.write(join(dist, "og-image.jpg"), "imagen");
+  // Versiones de las fotos principales de cada página (como las que genera Vite, con hash).
+  for (const { fotoPrincipal } of Object.values(PAGINAS_PUBLICAS)) {
+    if (!fotoPrincipal) continue;
+    await Bun.write(join(dist, "assets", `${fotoPrincipal.nombre}-480-Ab12_-xY.webp`), "webp");
+    await Bun.write(join(dist, "assets", `${fotoPrincipal.nombre}-1600-Cd34Ef56.jpg`), "jpg");
+  }
   const log = { warn: mock(() => {}) };
   const app = new Elysia()
     .use(errorHandler)

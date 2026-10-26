@@ -1,3 +1,22 @@
+/* Fuentes servidas desde el propio sitio (antes desde Google Fonts, que bloqueaba el dibujo de la
+   página mientras se conectaba a otro servidor). Son variables: un archivo cubre todos los grosores.
+   Solo el subconjunto latino (incluye á, é, ñ, ¿, ¡…), el mismo que pedía Google Fonts.
+   Licencia: SIL Open Font License. index.html las precarga. */
+@font-face{
+  font-family:'Manrope';
+  font-style:normal;
+  font-weight:400 800;
+  font-display:swap;
+  src:url('./assets/fonts/manrope-latin.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Sora';
+  font-style:normal;
+  font-weight:600 800;
+  font-display:swap;
+  src:url('./assets/fonts/sora-latin.woff2') format('woff2');
+}
+
   :root{
     --navy: #000000;
     --navy-2: #0a0a0a;

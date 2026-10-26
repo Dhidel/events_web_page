@@ -117,12 +117,12 @@ describe("producción con CORS_ORIGIN", () => {
     }
   });
 
-  test("la CSP bloquea scripts externos y iframes, y permite Google Fonts y Cloudinary", () => {
+  test("la CSP bloquea scripts externos y iframes, y solo permite Cloudinary como origen externo", () => {
     expect(CSP).toContain("script-src 'self';");
     expect(CSP).toContain("frame-ancestors 'none'");
     expect(CSP).toContain("connect-src 'self';");
-    expect(CSP).toContain("https://fonts.googleapis.com");
-    expect(CSP).toContain("https://fonts.gstatic.com");
+    expect(CSP).toContain("font-src 'self';");
+    expect(CSP).not.toContain("fonts.googleapis.com");
     expect(CSP).toContain("https://res.cloudinary.com");
   });
 

@@ -249,6 +249,7 @@ flowchart LR
 
 | Documento | Contenido |
 |---|---|
+| [docs/base-de-datos-y-api.md](docs/base-de-datos-y-api.md) | Colecciones de MongoDB (campos, límites, índices, relaciones, datos sensibles) y cada endpoint de la API (acceso, parámetros, ejemplos y errores) |
 | [docs/cotizador-e-integraciones.md](docs/cotizador-e-integraciones.md) | Reglas del cotizador (fórmula, límites, batucadas, texto legal, lo que no está implementado) y configuración de Resend y WhatsApp |
 | [docs/seguridad-y-operacion.md](docs/seguridad-y-operacion.md) | CORS, HTTPS y headers de seguridad, sesión del panel, límite por IP y anti-spam, errores, qué sirve el servidor en producción y optimización de imágenes |
 | Swagger (`http://localhost:3000/swagger`, solo en desarrollo) | Cada endpoint de la API con sus datos de entrada y respuestas |

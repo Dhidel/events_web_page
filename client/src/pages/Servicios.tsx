@@ -1,10 +1,17 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import corporativo from "../assets/img/corporativo.jpg";
-import quinceVivo from "../assets/img/quince-vivo.jpg";
-import bodasColor from "../assets/img/bodas-anillos-color.jpg";
-import navidad from "../assets/img/navidad.jpg";
-import espectaculosRobots from "../assets/img/espectaculos-robots.jpg";
-import { ACTS } from "../data/acts";
+import {
+  bodasAnillosColor as bodasColor,
+  corporativo,
+  espectaculosRobots,
+  navidad,
+  quinceVivo,
+} from "../assets/imagenes";
+import Foto, { FondoBanner, SIZES_BANNER } from "../components/Foto";
+import { fetchServicios, type Servicio } from "../lib/api";
+import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
+
+const BANNER = corporativo;
 
 const DETAILS = [
   {
@@ -90,14 +97,26 @@ function waLink(name: string, price: number | null) {
     price !== null
       ? `Hola! Me interesa cotizar: ${name} (Q${price.toLocaleString("es-GT")} c/u). Quisiera más información.`
       : `Hola! Me interesa cotizar: ${name}`;
-  return `https://wa.me/50230738716?text=${encodeURIComponent(text)}`;
+  return generarEnlaceWhatsAppDirecto(text);
 }
 
 export default function Servicios() {
+  const [servicios, setServicios] = useState<Servicio[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    fetchServicios()
+      .then((data) => {
+        setServicios(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }, []);
+
   return (
     <>
       <section className="page-banner">
-        <div className="page-banner-bg" style={{ backgroundImage: `url('${corporativo}')` }} />
+        <FondoBanner imagen={BANNER} />
         <div className="wrap">
           <div className="breadcrumb">
             <Link to="/">Inicio</Link>
@@ -124,9 +143,18 @@ export default function Servicios() {
 
       <section style={{ paddingTop: "20px" }}>
         <div className="wrap">
-          {DETAILS.map((d) => (
+          {DETAILS.map((d, i) => (
             <div className={d.reverse ? "service-detail reverse" : "service-detail"} id={d.id} key={d.id}>
-              <div className="service-detail-media"><img src={d.img} alt={d.alt} /></div>
+              <div className="service-detail-media">
+                {/* .service-detail-media: media columna de .wrap (538px) o todo el ancho desde 900px. La primera ya se ve al entrar.
+                    La foto del banner pide el mismo sizes que el banner: así el navegador elige el mismo archivo y no la baja dos veces. */}
+                <Foto
+                  imagen={d.img}
+                  sizes={d.img === BANNER ? SIZES_BANNER : "(max-width: 900px) calc(100vw - 48px), 538px"}
+                  alt={d.alt}
+                  loading={i === 0 ? "eager" : "lazy"}
+                />
+              </div>
               <div className="service-detail-body">
                 <div className="service-icon-lg"><svg><use href={`#${d.icon}`} /></svg></div>
                 <h2>{d.title}</h2>
@@ -136,10 +164,12 @@ export default function Servicios() {
                     <li key={inc}><svg><use href="#i-sparkle" /></svg>{inc}</li>
                   ))}
                 </ul>
-                <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Cotizar este servicio</Link>
-                {d.withCatalogLink && (
-                  <a href="#catalogo" className="btn btn-outline" style={{ marginLeft: "10px" }}>Ver catálogo con precios</a>
-                )}
+                <div className="service-detail-actions">
+                  <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Cotizar este servicio</Link>
+                  {d.withCatalogLink && (
+                    <a href="#catalogo" className="btn btn-outline">Ver catálogo con precios</a>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -159,37 +189,30 @@ export default function Servicios() {
               estimado inmediato, o escríbenos y te armamos una propuesta a la medida.
             </p>
           </div>
-          <div className="acts-grid">
-            {ACTS.map((act) => (
-              <div className="act-card" key={act.id}>
-                <h4>{act.name}</h4>
-                {act.price !== null ? (
-                  <span className="act-includes"><strong>Incluye:</strong> {act.includes}</span>
-                ) : (
-                  <>
-                    <span className="act-includes">{act.includes}</span>
-                    <span className="act-note">{act.note}</span>
-                  </>
-                )}
-                <div className="act-meta">
-                  {act.price !== null ? (
-                    <>
-                      <div className="act-price">
-                        Q{act.price.toLocaleString("es-GT")}
-                        <small>Costo por personaje</small>
-                      </div>
-                      <div className="act-duration">Duración<br />1 hora</div>
-                    </>
-                  ) : (
-                    <div className="act-price" style={{ fontSize: "14px", color: "var(--muted)" }}>Precio variable</div>
-                  )}
+          {status === "loading" && <p className="gallery-empty">Cargando servicios…</p>}
+          {status === "error" && (
+            <p className="gallery-empty">No se pudieron cargar los servicios, intenta de nuevo.</p>
+          )}
+          {status === "ready" && (
+            <div className="acts-grid">
+              {servicios.map((s) => (
+                <div className="act-card" key={s.id}>
+                  <h3>{s.nombre}</h3>
+                  <span className="act-includes"><strong>Incluye:</strong> {s.descripcion}</span>
+                  <div className="act-meta">
+                    <div className="act-price">
+                      Q{s.precio.toLocaleString("es-GT")}
+                      <small>{s.artistas !== undefined ? `Costo por grupo · ${s.artistas} artistas` : "Costo por personaje"}</small>
+                    </div>
+                    <div className="act-duration">Duración<br />1 hora</div>
+                  </div>
+                  <a href={waLink(s.nombre, s.precio)} target="_blank" rel="noreferrer" className="btn btn-primary">
+                    <svg><use href="#i-whatsapp" /></svg>Cotizar
+                  </a>
                 </div>
-                <a href={waLink(act.name, act.price)} target="_blank" rel="noreferrer" className="btn btn-primary">
-                  <svg><use href="#i-whatsapp" /></svg>Cotizar
-                </a>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -199,7 +222,7 @@ export default function Servicios() {
           <p>Poseemos un portafolio exclusivo con una amplia variedad de conceptos artísticos. Cuéntanos tu proyecto y diseñamos la propuesta perfecta.</p>
           <div className="hero-ctas">
             <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Solicitar catálogo exclusivo</Link>
-            <a href="https://wa.me/50230738716" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
           </div>
         </div>
       </section>

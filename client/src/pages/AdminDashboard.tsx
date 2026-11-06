@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/img/logo.png";
+import { logo } from "../assets/imagenes";
+import { urlCloudinary } from "../lib/cloudinary";
 import {
   adminFetch,
   clearAdminToken,
@@ -9,6 +10,7 @@ import {
   UnauthorizedError,
   type GalleryImage,
 } from "../lib/api";
+import { useTitulo } from "../lib/useTitulo";
 
 const CATEGORIES = [
   { value: "quinceaneras", label: "Quinceaños" },
@@ -19,6 +21,7 @@ const CATEGORIES = [
 ];
 
 export default function AdminDashboard() {
+  useTitulo("Galería de eventos · Panel administrativo");
   const navigate = useNavigate();
   const [items, setItems] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +70,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="admin-dash">
+    <main className="admin-dash">
       <header className="admin-dash-head">
         <div className="admin-dash-head-brand">
           <img src={logo} alt="Show Company" />
@@ -127,7 +130,7 @@ export default function AdminDashboard() {
           ))}
         </div>
       )}
-    </div>
+    </main>
   );
 }
 
@@ -202,14 +205,17 @@ function NewImageForm({
           {preview ? (
             <img src={preview} alt="Vista previa" />
           ) : (
-            <span>Haz clic para elegir una imagen</span>
+            <span>Haz clic para elegir una imagen (JPG, PNG o WebP, máx. 10 MB)</span>
           )}
+          {/* .sr-only y no hidden: con hidden (display:none) el input no recibe foco y la foto no
+              se puede elegir con teclado. El anillo de foco lo dibuja el label (:focus-within). */}
           <input
             key={formKey}
             type="file"
-            accept="image/*"
+            className="sr-only"
+            accept="image/jpeg,image/png,image/webp"
+            aria-label="Elegir imagen (JPG, PNG o WebP, máx. 10 MB)"
             onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
-            hidden
           />
         </label>
 
@@ -338,15 +344,17 @@ function GalleryCard({
   return (
     <div className="gallery-admin-card">
       <label className="gallery-admin-thumb">
-        <img src={preview ?? item.imageUrl} alt={alt} />
+        <img src={preview ?? urlCloudinary(item.imageUrl, 600)} alt={alt} />
         <span className="gallery-admin-thumb-hint">
           {file ? "Nueva imagen seleccionada" : "Reemplazar imagen"}
         </span>
+        {/* Igual que en "Agregar foto": .sr-only para que se pueda llegar con Tab. */}
         <input
           type="file"
-          accept="image/*"
+          className="sr-only"
+          accept="image/jpeg,image/png,image/webp"
+          aria-label={`Reemplazar imagen: ${item.alt}`}
           onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
-          hidden
         />
       </label>
 

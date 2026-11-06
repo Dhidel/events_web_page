@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/img/logo.png";
+import { logo } from "../assets/imagenes";
 import {
   adminFetch,
   clearAdminToken,
@@ -10,6 +10,8 @@ import {
   type Solicitud,
   type SolicitudEstado,
 } from "../lib/api";
+import { maskEmail, maskPhone } from "../lib/privacy";
+import { useTitulo } from "../lib/useTitulo";
 
 const ESTADOS: { value: SolicitudEstado; label: string; key: string }[] = [
   { value: "nuevo", label: "Nuevo", key: "nuevo" },
@@ -26,13 +28,54 @@ const ORIGEN_LABEL: Record<Solicitud["origen"], string> = {
   contacto: "Contacto",
 };
 
+// "2026-12-05" → "05 dic 2026". Se arma la fecha con año/mes/día locales: new Date("2026-12-05")
+// la tomaría como medianoche UTC y en Guatemala (UTC-6) se mostraría el día anterior.
+function formatFechaEvento(fecha: string): string {
+  const [y, m, d] = fecha.split("-").map(Number);
+  if (!y || !m || !d) return fecha;
+  return new Date(y, m - 1, d).toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+interface LineaCotizada {
+  nombre: string;
+  cantidad: number;
+  subtotal: number;
+}
+
+const formatQ = (monto: number) => `Q${monto.toLocaleString("es-GT")}`;
+
+// Lo que el cliente armó en el Cotizador (lo calcula el servidor al guardar). Llega como objeto
+// libre, así que se lee con cuidado: una solicitud vieja o de Contacto no lo trae.
+function leerCotizacion(
+  detalle: Solicitud["detalleCotizador"]
+): { lineas: LineaCotizada[]; total: number } | null {
+  if (!detalle || !Array.isArray(detalle.personajes) || typeof detalle.total !== "number") return null;
+  const lineas = (detalle.personajes as Partial<LineaCotizada>[]).filter(
+    (l): l is LineaCotizada =>
+      typeof l?.nombre === "string" && typeof l.cantidad === "number" && typeof l.subtotal === "number"
+  );
+  return { lineas, total: detalle.total };
+}
+
 export default function AdminCotizaciones() {
+  useTitulo("Bandeja de cotizaciones · Panel administrativo");
   const navigate = useNavigate();
   const [items, setItems] = useState<Solicitud[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<SolicitudEstado | "">("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  // Filas con correo/teléfono visibles. Por defecto todo va enmascarado para que
+  // los datos no queden expuestos en pantalla (capturas, alguien mirando, etc.).
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+
+  const toggleReveal = (id: string) =>
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const handleAuthError = useCallback(() => {
     clearAdminToken();
@@ -99,7 +142,7 @@ export default function AdminCotizaciones() {
   };
 
   return (
-    <div className="admin-dash">
+    <main className="admin-dash admin-dash-wide">
       <header className="admin-dash-head">
         <div className="admin-dash-head-brand">
           <img src={logo} alt="Show Company" />
@@ -136,6 +179,7 @@ export default function AdminCotizaciones() {
         <button
           type="button"
           className={filter === "" ? "cotiz-counter active" : "cotiz-counter"}
+          aria-pressed={filter === ""}
           onClick={() => setFilter("")}
         >
           <strong>{items.length}</strong>
@@ -150,6 +194,7 @@ export default function AdminCotizaciones() {
                 ? `cotiz-counter cotiz-counter-${e.key} active`
                 : `cotiz-counter cotiz-counter-${e.key}`
             }
+            aria-pressed={filter === e.value}
             onClick={() => setFilter(e.value)}
           >
             <strong>{counts[e.value]}</strong>
@@ -173,36 +218,77 @@ export default function AdminCotizaciones() {
               <tr>
                 <th>Nombre</th>
                 <th>Teléfono</th>
+                <th>Cotización</th>
                 <th>Tipo de evento</th>
-                <th>Origen</th>
-                <th>Fecha</th>
+                <th className="cotiz-wide-only">Fecha del evento</th>
+                <th className="cotiz-wide-only">Origen</th>
+                <th>Recibida</th>
                 <th>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item) => (
+              {filteredItems.map((item) => {
+                const isRevealed = revealed.has(item.id);
+                const cotizacion = leerCotizacion(item.detalleCotizador);
+                return (
                 <tr key={item.id}>
                   <td>
-                    <div className="cotiz-name">{item.nombre}</div>
-                    <div className="cotiz-email">{item.correo}</div>
+                    <div className="cotiz-name" title={item.nombre}>{item.nombre}</div>
+                    <div className="cotiz-email">{isRevealed ? item.correo : maskEmail(item.correo)}</div>
                   </td>
-                  <td>{item.telefono}</td>
-                  <td>{item.tipoEvento || "—"}</td>
-                  <td>{ORIGEN_LABEL[item.origen]}</td>
-                  <td>
+                  <td data-label="Teléfono">
+                    <span className="cotiz-nowrap">
+                      {isRevealed ? item.telefono : maskPhone(item.telefono)}
+                      <button
+                        type="button"
+                        className="cotiz-reveal"
+                        aria-label={`${isRevealed ? "Ocultar" : "Ver"} teléfono y correo de ${item.nombre}`}
+                        onClick={() => toggleReveal(item.id)}
+                      >
+                        {isRevealed ? "Ocultar" : "Ver"}
+                      </button>
+                    </span>
+                  </td>
+                  <td data-label="Cotización">
+                    {cotizacion ? (
+                      <div className="cotiz-detalle">
+                        <strong>{formatQ(cotizacion.total)}</strong>
+                        <ul>
+                          {cotizacion.lineas.map((l) => (
+                            <li key={l.nombre}>
+                              {l.cantidad}× {l.nombre} · {formatQ(l.subtotal)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td data-label="Tipo de evento">
+                    {item.tipoEvento || "—"}
+                    {item.fechaEvento && (
+                      <span className="cotiz-sub cotiz-compact-only">{formatFechaEvento(item.fechaEvento)}</span>
+                    )}
+                  </td>
+                  <td data-label="Fecha del evento" className="cotiz-nowrap cotiz-wide-only">{item.fechaEvento ? formatFechaEvento(item.fechaEvento) : "—"}</td>
+                  <td data-label="Origen" className="cotiz-wide-only">{ORIGEN_LABEL[item.origen]}</td>
+                  <td data-label="Recibida" className="cotiz-nowrap">
                     {new Date(item.createdAt).toLocaleDateString("es-GT", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
                     })}
+                    <span className="cotiz-sub cotiz-compact-only">{ORIGEN_LABEL[item.origen]}</span>
                   </td>
-                  <td>
+                  <td data-label="Estado">
                     <div className="cotiz-estado-cell">
                       <span className={`cotiz-badge cotiz-badge-${ESTADO_KEY[item.estado]}`}>
                         {ESTADO_LABEL[item.estado]}
                       </span>
                       <select
                         className="cotiz-select"
+                        aria-label={`Estado de la solicitud de ${item.nombre}`}
                         value={item.estado}
                         disabled={savingId === item.id}
                         onChange={(e) => changeEstado(item.id, e.target.value as SolicitudEstado)}
@@ -216,11 +302,12 @@ export default function AdminCotizaciones() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
-    </div>
+    </main>
   );
 }

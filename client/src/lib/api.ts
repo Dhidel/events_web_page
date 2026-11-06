@@ -22,6 +22,7 @@ export interface Solicitud {
   correo: string;
   tipoEvento?: string;
   mensaje?: string;
+  fechaEvento?: string;
   origen: SolicitudOrigen;
   detalleCotizador?: Record<string, unknown>;
   estado: SolicitudEstado;
@@ -43,17 +44,53 @@ export async function fetchGallery(): Promise<GalleryImage[]> {
   return res.json();
 }
 
+export interface Servicio {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  categoria: string;
+  precio: number;
+  unidad: string;
+  // Solo en grupos (batucadas): artistas incluidos en el precio. La cantidad cuenta grupos.
+  artistas?: number;
+  activo: boolean;
+  orden: number;
+}
+
+// Catálogo público de personajes/actos (Servicios y Cotizador). Un catálogo vacío
+// se trata como error: las páginas no tienen nada útil que mostrar sin él.
+export async function fetchServicios(): Promise<Servicio[]> {
+  const res = await fetch(`${API_BASE}/api/servicios`);
+  if (!res.ok) throw new Error("No se pudieron cargar los servicios.");
+  const data = (await res.json()) as Servicio[];
+  if (!Array.isArray(data) || data.length === 0) throw new Error("El catálogo de servicios está vacío.");
+  return data;
+}
+
 export interface CotizacionPayload {
   nombre: string;
   telefono: string;
   correo: string;
   tipoEvento?: string;
   mensaje?: string;
+  fechaEvento?: string;
   origen: SolicitudOrigen;
   detalleCotizador?: Record<string, unknown>;
+  // Honeypot anti-spam: el input está oculto y una persona nunca lo llena. Solo se envía si
+  // trae texto (o sea, si lo llenó un bot).
+  sitioWeb?: string;
 }
 
 export class UnauthorizedError extends Error {}
+
+// 429: demasiadas solicitudes seguidas desde esta conexión. Lleva el mensaje del servidor;
+// el tipo propio permite a la página ofrecer WhatsApp en vez de "Reintentar".
+export class DemasiadasSolicitudesError extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "DemasiadasSolicitudesError";
+  }
+}
 
 // Extrae un mensaje legible de una respuesta con error. El backend a veces responde
 // JSON ({ error: "..." }) y a veces texto plano (errores no capturados de Elysia),
@@ -86,13 +123,39 @@ export async function adminFetch(path: string, init: RequestInit = {}): Promise<
   return res;
 }
 
+// La API nombra los campos rechazados con su nombre interno ("Datos inválidos o faltantes:
+// telefono."). Los formularios ya validan con las mismas reglas, así que esto casi no se ve;
+// si pasa, se traduce a algo que el visitante entienda.
+const CAMPOS_LEGIBLES: Record<string, string> = {
+  nombre: "nombre",
+  telefono: "teléfono",
+  correo: "correo",
+  tipoEvento: "tipo de evento",
+  mensaje: "mensaje",
+  fechaEvento: "fecha del evento",
+  detalleCotizador: "personajes seleccionados",
+};
+
+export function mensajeLegible(error: string): string {
+  const campos = /^Datos inválidos o faltantes: (.+)\.$/.exec(error)?.[1];
+  if (!campos) return error;
+  const nombres = campos.split(", ").map((campo) => CAMPOS_LEGIBLES[campo] ?? campo);
+  return `Revisa estos datos e intenta de nuevo: ${nombres.join(", ")}.`;
+}
+
 // Endpoint público que usan el formulario de Contacto y el Cotizador al confirmar.
-export async function submitCotizacion(payload: CotizacionPayload): Promise<Solicitud> {
+export async function submitCotizacion(payload: CotizacionPayload, signal?: AbortSignal): Promise<Solicitud> {
   const res = await fetch(`${API_BASE}/api/cotizaciones`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    signal,
   });
-  if (!res.ok) throw new Error(await readError(res, "No se pudo enviar la solicitud."));
+  if (res.status === 429) {
+    throw new DemasiadasSolicitudesError(
+      await readError(res, "Recibimos varias solicitudes seguidas desde tu conexión. Espera unos minutos e intenta de nuevo.")
+    );
+  }
+  if (!res.ok) throw new Error(mensajeLegible(await readError(res, "No se pudo enviar la solicitud.")));
   return res.json();
 }

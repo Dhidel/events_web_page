@@ -1,0 +1,10 @@
+{
+  // Pruebas de código del frontend (client/src/lib) que corren con bun test: necesitan los
+  // tipos del navegador (Window, DOM) además de los de Bun. El backend no los carga.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"]
+  },
+  "include": ["."],
+  "exclude": []
+}

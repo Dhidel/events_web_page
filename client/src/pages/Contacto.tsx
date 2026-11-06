@@ -1,9 +1,24 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import aveTematico from "../assets/img/ave-tematico.jpg";
+import { aveTematico } from "../assets/imagenes";
+import { FondoBanner } from "../components/Foto";
 import { EVENT_TYPES } from "../data/eventTypes";
-import { isNameValid, isPhoneValid, isEmailValid } from "../lib/validators";
+import {
+  isNameValid,
+  isPhoneValid,
+  isEmailValid,
+  CORREO_MAX,
+  MENSAJE_CORREO,
+  MENSAJE_NOMBRE,
+  MENSAJE_TELEFONO,
+  NOMBRE_MAX,
+  primerCampoConError,
+  TELEFONO_MAX,
+} from "../lib/validators";
 import { submitCotizacion } from "../lib/api";
+import { guardarYAbrirWhatsApp } from "../lib/whatsapp";
+import CampoTrampa from "../components/CampoTrampa";
+import { generarEnlaceWhatsApp, generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
 
 const FAQS = [
   {
@@ -30,6 +45,24 @@ const FAQS = [
 
 type ContactErrors = { name: string; phone: string; email: string };
 
+// Envío guardado. waHref se conserva porque el formulario se vacía: el botón "Abrir WhatsApp"
+// lo necesita si el navegador bloqueó la pestaña (o el usuario la cerró).
+type EnvioExitoso = { whatsappAbierto: boolean; waHref: string };
+
+// Si el backend no responde en este tiempo se trata como error (igual que el Cotizador).
+const SAVE_TIMEOUT_MS = 15_000;
+
+// Ids de los campos con validación (label for/id, mensaje de error y foco al primer error).
+const CAMPOS: Record<keyof ContactErrors, string> = { name: "contacto-nombre", phone: "contacto-telefono", email: "contacto-correo" };
+const ORDEN_CAMPOS = ["name", "phone", "email"] as const;
+
+// Props de accesibilidad de un campo con validación: aria-invalid y el mensaje asociado.
+const propsDeError = (campo: keyof ContactErrors, error: string) => ({
+  id: CAMPOS[campo],
+  "aria-invalid": error ? true : undefined,
+  "aria-describedby": error ? `${CAMPOS[campo]}-error` : undefined,
+});
+
 export default function Contacto() {
   const [form, setForm] = useState({
     name: "",
@@ -38,11 +71,18 @@ export default function Contacto() {
     eventType: EVENT_TYPES[0],
     date: "",
     details: "",
+    sitioWeb: "", // honeypot: siempre vacío para una persona real
   });
   const [errors, setErrors] = useState<ContactErrors>({ name: "", phone: "", email: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [submitSuccess, setSubmitSuccess] = useState(false);
+  // 429: reintentar enseguida volvería a fallar, así que se ofrece WhatsApp directo.
+  const [submitLimite, setSubmitLimite] = useState(false);
+  const [exito, setExito] = useState<EnvioExitoso | null>(null);
+  // Segunda capa contra doble envío (además del botón deshabilitado). Es un ref y no el
+  // estado `submitting` porque dos clics en el mismo instante leen el mismo valor viejo
+  // del estado; el ref cambia en el acto.
+  const submittingRef = useRef(false);
 
   const updateField = (field: keyof ContactErrors, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -54,45 +94,75 @@ export default function Contacto() {
     });
   };
 
+  // No puede haber ningún await antes de guardarYAbrirWhatsApp: abre la pestaña de WhatsApp
+  // en el mismo clic. Si se abre después de esperar al servidor, el navegador la bloquea
+  // (Safari siempre; Chrome/Firefox a los pocos segundos). Ver lib/whatsapp.ts.
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
 
     const nextErrors: ContactErrors = {
-      name: isNameValid(form.name) ? "" : "Por favor ingresa tu nombre.",
-      phone: isPhoneValid(form.phone) ? "" : "Ingresa un teléfono válido (solo números, espacios, + o -).",
-      email: isEmailValid(form.email) ? "" : "Ingresa un correo electrónico válido.",
+      name: isNameValid(form.name) ? "" : MENSAJE_NOMBRE,
+      phone: isPhoneValid(form.phone) ? "" : MENSAJE_TELEFONO,
+      email: isEmailValid(form.email) ? "" : MENSAJE_CORREO,
     };
     setErrors(nextErrors);
 
-    if (nextErrors.name || nextErrors.phone || nextErrors.email) return;
+    // Con errores, el foco va al primer campo inválido: el lector de pantalla lee el campo y su mensaje.
+    const conError = primerCampoConError(nextErrors, ORDEN_CAMPOS);
+    if (conError) {
+      document.getElementById(CAMPOS[conError])?.focus();
+      return;
+    }
 
+    submittingRef.current = true;
     setSubmitting(true);
     setSubmitError("");
-    setSubmitSuccess(false);
+    setSubmitLimite(false);
+    setExito(null);
 
-    try {
-      await submitCotizacion({
-        nombre: form.name.trim(),
-        telefono: form.phone.trim(),
-        correo: form.email.trim(),
-        mensaje: form.details.trim() || undefined,
-        tipoEvento: form.eventType !== EVENT_TYPES[0] ? form.eventType : undefined,
-        origen: "contacto",
-      });
+    const tipoEvento = form.eventType !== EVENT_TYPES[0] ? form.eventType : undefined;
+    // El input type="date" ya entrega "YYYY-MM-DD" (o "" si no se eligió fecha).
+    const fechaEvento = form.date || undefined;
+    const mensaje = form.details.trim() || undefined;
+    const waHref = generarEnlaceWhatsApp({ nombre: form.name.trim(), tipoEvento, fechaEvento, mensaje, origen: "contacto" });
 
-      setSubmitSuccess(true);
-      setForm({ name: "", phone: "", email: "", eventType: EVENT_TYPES[0], date: "", details: "" });
-    } catch (err) {
-      setSubmitError((err as Error).message);
-    } finally {
-      setSubmitting(false);
+    // WhatsApp solo se abre si la solicitud quedó guardada; si falla, la pestaña se cierra.
+    const resultado = await guardarYAbrirWhatsApp({
+      waHref,
+      guardar: () =>
+        submitCotizacion(
+          {
+            nombre: form.name.trim(),
+            telefono: form.phone.trim(),
+            correo: form.email.trim(),
+            mensaje,
+            tipoEvento,
+            fechaEvento,
+            origen: "contacto",
+            sitioWeb: form.sitioWeb || undefined,
+          },
+          AbortSignal.timeout(SAVE_TIMEOUT_MS)
+        ),
+    });
+
+    submittingRef.current = false;
+    setSubmitting(false);
+
+    if (!resultado.ok) {
+      setSubmitError(resultado.error);
+      setSubmitLimite(resultado.limite === true);
+      return;
     }
+
+    setExito({ whatsappAbierto: resultado.whatsappAbierto, waHref });
+    setForm({ name: "", phone: "", email: "", eventType: EVENT_TYPES[0], date: "", details: "", sitioWeb: "" });
   };
 
   return (
     <>
       <section className="page-banner">
-        <div className="page-banner-bg" style={{ backgroundImage: `url('${aveTematico}')` }} />
+        <FondoBanner imagen={aveTematico} />
         <div className="wrap">
           <div className="breadcrumb">
             <Link to="/">Inicio</Link>
@@ -125,11 +195,11 @@ export default function Contacto() {
               <div><span className="ico"><svg><use href="#i-clock" /></svg></span> Oficina: Lun - Vie, horario laboral · Redes sociales: atención 24 horas</div>
             </div>
 
-            <a href="https://wa.me/50230738716" className="btn btn-primary" style={{ marginBottom: "30px" }}>
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ marginBottom: "30px" }}>
               <svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp ahora
             </a>
 
-            <h5 style={{ fontSize: "13px", textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", marginBottom: "14px" }}>Síguenos</h5>
+            <h3 style={{ fontFamily: "inherit", fontSize: "13px", textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", marginBottom: "14px" }}>Síguenos</h3>
             <div className="contact-socials">
               <a href="https://www.instagram.com/showcompany_gt" target="_blank" rel="noreferrer" style={{ background: "var(--ig-grad)" }} aria-label="Instagram">
                 <svg><use href="#i-ig" /></svg>
@@ -143,7 +213,7 @@ export default function Contacto() {
               <a href="https://www.youtube.com/@showcompanygt" target="_blank" rel="noreferrer" style={{ background: "var(--yt)" }} aria-label="YouTube">
                 <svg><use href="#i-yt" /></svg>
               </a>
-              <a href="https://wa.me/50230738716" target="_blank" rel="noreferrer" style={{ background: "var(--wa)" }} aria-label="WhatsApp">
+              <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" style={{ background: "var(--wa)" }} aria-label="WhatsApp">
                 <svg><use href="#i-whatsapp" /></svg>
               </a>
             </div>
@@ -156,56 +226,108 @@ export default function Contacto() {
             <p style={{ gridColumn: "1/-1", fontSize: "12.5px", color: "var(--muted)", marginBottom: "6px" }}>
               Más de 25 años diseñando los mejores eventos de Guatemala.
             </p>
+            {/* Labels ocultos a la vista (.sr-only): el diseño sigue mostrando el placeholder, y el
+                lector de pantalla anuncia el nombre del campo aunque ya tenga texto. */}
             <div>
+              <label htmlFor={CAMPOS.name} className="sr-only">Nombre completo</label>
               <input
                 type="text"
                 placeholder="Nombre completo"
+                autoComplete="name"
+                maxLength={NOMBRE_MAX}
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
+                {...propsDeError("name", errors.name)}
               />
-              {errors.name && <span className="field-error">{errors.name}</span>}
+              {errors.name && <span id={`${CAMPOS.name}-error`} className="field-error">{errors.name}</span>}
             </div>
             <div>
+              <label htmlFor={CAMPOS.phone} className="sr-only">WhatsApp o teléfono directo</label>
               <input
                 type="tel"
                 placeholder="WhatsApp / Teléfono directo"
+                autoComplete="tel"
+                maxLength={TELEFONO_MAX}
                 value={form.phone}
                 onChange={(e) => updateField("phone", e.target.value)}
+                {...propsDeError("phone", errors.phone)}
               />
-              {errors.phone && <span className="field-error">{errors.phone}</span>}
+              {errors.phone && <span id={`${CAMPOS.phone}-error`} className="field-error">{errors.phone}</span>}
             </div>
             <div className="full">
+              <label htmlFor={CAMPOS.email} className="sr-only">Correo electrónico</label>
               <input
                 type="email"
                 placeholder="Correo electrónico corporativo o personal"
+                autoComplete="email"
+                maxLength={CORREO_MAX}
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
+                {...propsDeError("email", errors.email)}
               />
-              {errors.email && <span className="field-error">{errors.email}</span>}
+              {errors.email && <span id={`${CAMPOS.email}-error`} className="field-error">{errors.email}</span>}
             </div>
-            <select value={form.eventType} onChange={(e) => setForm({ ...form, eventType: e.target.value })}>
-              {EVENT_TYPES.map((opt) => (
-                <option key={opt}>{opt}</option>
-              ))}
-            </select>
-            <input
-              type="date"
-              placeholder="Fecha estimada del evento"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-            />
-            <textarea
-              className="full"
-              placeholder="Cuéntanos más detalles sobre tu evento..."
-              value={form.details}
-              onChange={(e) => setForm({ ...form, details: e.target.value })}
-            />
-            {submitSuccess && (
-              <p className="full form-success">¡Recibimos tu solicitud! Te contactaremos pronto.</p>
+            {/* align-self:end: con el label visible de la fecha al lado, el desplegable queda alineado por abajo. */}
+            <div className="campo-alineado-abajo">
+              <label htmlFor="contacto-tipo-evento" className="sr-only">Tipo de evento</label>
+              <select id="contacto-tipo-evento" value={form.eventType} onChange={(e) => setForm({ ...form, eventType: e.target.value })}>
+                {EVENT_TYPES.map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              {/* Label visible: los navegadores no muestran el placeholder en type="date" (solo "dd/mm/aaaa"). */}
+              <label htmlFor="contacto-fecha" className="field-label">Fecha estimada del evento</label>
+              <input
+                id="contacto-fecha"
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </div>
+            <div className="full">
+              <label htmlFor="contacto-detalles" className="sr-only">Detalles de tu evento</label>
+              <textarea
+                id="contacto-detalles"
+                placeholder="Cuéntanos más detalles sobre tu evento..."
+                maxLength={2000}
+                value={form.details}
+                onChange={(e) => setForm({ ...form, details: e.target.value })}
+              />
+            </div>
+            {exito && (
+              // Botón de respaldo: un clic directo del usuario nunca lo bloquea el navegador.
+              <div className="full form-success">
+                <p>
+                  ¡Recibimos tu solicitud! Te contactaremos pronto.{" "}
+                  {exito.whatsappAbierto ? "¿No se abrió WhatsApp?" : "Continúa en WhatsApp:"}
+                </p>
+                <a href={exito.waHref} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ marginTop: "10px" }}>
+                  <svg><use href="#i-whatsapp" /></svg>Abrir WhatsApp
+                </a>
+              </div>
             )}
-            {submitError && <p className="full field-error">{submitError}</p>}
+            {/* Aviso para lectores de pantalla: siempre en el DOM (si no, el cambio no siempre se anuncia).
+                Es absoluto (.sr-only), así que no ocupa una fila de la grilla. */}
+            <p className="sr-only" role="status">
+              {submitting ? "Enviando tu solicitud…" : exito ? "¡Recibimos tu solicitud! Te contactaremos pronto." : ""}
+            </p>
+            <CampoTrampa value={form.sitioWeb} onChange={(sitioWeb) => setForm({ ...form, sitioWeb })} />
+            {submitError && (
+              <div className="full field-error" role="alert">
+                <p>{submitError}</p>
+                {submitLimite && (
+                  <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ marginTop: "10px" }}>
+                    <svg><use href="#i-whatsapp" /></svg>Escribirnos por WhatsApp
+                  </a>
+                )}
+              </div>
+            )}
 
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {/* aria-disabled y no disabled: un botón deshabilitado pierde el foco y el teclado vuelve al
+                inicio de la página. El doble envío lo frena submittingRef en handleSubmit. */}
+            <button type="submit" className="btn btn-primary" aria-disabled={submitting || undefined}>
               {submitting ? "Enviando..." : "Enviar solicitud"}
               <svg><use href="#i-whatsapp" /></svg>
             </button>

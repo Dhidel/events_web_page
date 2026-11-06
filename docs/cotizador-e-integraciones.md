@@ -144,7 +144,7 @@ manda un correo al equipo con Resend (`src/services/email.service.ts`).
 |---|---|---|
 | `RESEND_API_KEY` | Clave de la API de Resend | El servidor avisa al arrancar; las solicitudes se guardan pero no se manda correo |
 | `EMAIL_FROM` | Remitente | Se usa `onboarding@resend.dev` (el remitente de pruebas de Resend, que **solo puede enviar al correo dueño de la cuenta**) |
-| `EMAIL_TO_NOTIFY` | Destinatario | Se usa una dirección de desarrollo escrita en el código. **Hoy admite UN solo destinatario.** |
+| `EMAIL_TO_NOTIFY` | Destinatario | Si falta o está vacía, el correo no se envía y el error queda en el log; no hay destinatario de respaldo. **Admite un solo destinatario.** |
 
 ### Qué contiene el correo
 

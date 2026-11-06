@@ -80,7 +80,7 @@ cada variable comentada; los valores de abajo son **ejemplos falsos**.
 | `CLOUDINARY_FOLDER` | No | Carpeta de las fotos en Cloudinary. | `show-company/gallery` |
 | `RESEND_API_KEY` | Para el correo | Clave de Resend. | `re_xxxxxxxx` |
 | `EMAIL_FROM` | No | Remitente. Por defecto `onboarding@resend.dev` (solo envía al dueño de la cuenta). | `notificaciones@ejemplo.com` |
-| `EMAIL_TO_NOTIFY` | En producción | Quién recibe las notificaciones. **Una sola dirección**; si está vacía se usa una de desarrollo. | `ventas@ejemplo.com` |
+| `EMAIL_TO_NOTIFY` | Para el correo | Quién recibe las notificaciones (**una sola dirección**). Si falta o está vacía, el correo no se envía y el error queda en el log; no hay destinatario de respaldo. | `ventas@ejemplo.com` |
 | `CLIENT_IP_HEADER` | En el hosting (esta o la siguiente) | Header donde el hosting pone la IP real del visitante. | `cf-connecting-ip` |
 | `TRUST_PROXY_HOPS` | En el hosting (esta o la anterior) | Proxies de confianza delante del servidor. | `1` |
 | `RATE_LIMIT_COTIZACIONES_MAX` / `_VENTANA_MIN` | No | Envíos por IP a cotizaciones / ventana en minutos. | `5` / `10` |

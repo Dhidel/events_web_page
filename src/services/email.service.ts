@@ -184,12 +184,13 @@ function generarTemplateCorreo(solicitud: SolicitudParaCorreo): string {
 
 export async function enviarCorreoNotificacion(solicitud: SolicitudParaCorreo) {
   const from = process.env.EMAIL_FROM || "onboarding@resend.dev";
-  const to = process.env.EMAIL_TO_NOTIFY || "djosorio@ufm.edu";
+  const to = process.env.EMAIL_TO_NOTIFY?.trim();
   const subject =
     solicitud.origen === "cotizador"
       ? `Nueva Cotización: ${solicitud.nombre}`
       : `Nuevo Contacto: ${solicitud.nombre}`;
 
+  if (!to) throw new Error("EMAIL_TO_NOTIFY no está configurada: no se envió el correo.");
   if (!resend) throw new Error("RESEND_API_KEY no está configurada: no se envió el correo.");
 
   const html = generarTemplateCorreo(solicitud);

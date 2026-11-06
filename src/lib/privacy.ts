@@ -53,6 +53,10 @@ export function redactPII(text: string): string {
 // Versión segura de un error para console.error: solo nombre, mensaje y stack, ya enmascarados.
 // Nunca se loguea el objeto completo (Mongoose adjunta los valores del documento en él).
 export function safeErrorLog(error: unknown): string {
-  if (error instanceof Error) return redactPII(error.stack ?? `${error.name}: ${error.message}`);
+  if (error instanceof Error) {
+    const stack = error.stack ?? `${error.name}: ${error.message}`;
+    const details = error.message && !stack.includes(error.message) ? `${stack}\n${error.message}` : stack;
+    return redactPII(details);
+  }
   return redactPII(String(error));
 }

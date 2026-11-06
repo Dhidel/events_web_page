@@ -26,5 +26,10 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+  // Solo el backend y sus pruebas. client/ tiene su propio tsconfig y dependencias, y
+  // tests/client (pruebas de código del navegador) usa tests/client/tsconfig.json, que
+  // agrega los tipos del DOM. `bun run typecheck` corre los tres.
+  "include": ["src", "tests"],
+  "exclude": ["tests/client"]
 }

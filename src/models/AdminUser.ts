@@ -7,6 +7,9 @@ export interface AdminUserAttrs {
   email: string;
   password: string;
   name: string;
+  // Va dentro de cada token (campo "v"). Subirla (bun run revocar-sesiones) invalida todos los
+  // tokens ya emitidos de este admin: es el "cerrar sesión en todos lados".
+  versionSesion: number;
 }
 
 export interface AdminUserMethods {
@@ -22,6 +25,7 @@ const adminUserSchema = new Schema<AdminUserAttrs, AdminUserModel, AdminUserMeth
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     password: { type: String, required: true, select: false },
     name: { type: String, required: true, trim: true },
+    versionSesion: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

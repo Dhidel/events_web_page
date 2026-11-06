@@ -1,17 +1,32 @@
-import { useEffect, useRef, useState } from "react";
+ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import quinceAlicia from "../assets/img/quince-alicia.jpg";
-import espectaculosRobots from "../assets/img/espectaculos-robots.jpg";
-import navidad from "../assets/img/navidad.jpg";
-import corporativo from "../assets/img/corporativo.jpg";
-import quinceVivo from "../assets/img/quince-vivo.jpg";
-import bodasColor from "../assets/img/bodas-anillos-color.jpg";
-import carnavalPlumas from "../assets/img/carnaval-plumas.jpg";
-import aveTematico from "../assets/img/ave-tematico.jpg";
-import animacionEvento from "../assets/img/animacion-evento.jpg";
-import bodasBn from "../assets/img/bodas-anillos-bn.jpg";
+import {
+  animacionEvento,
+  aveTematico,
+  bodasAnillosBn as bodasBn,
+  bodasAnillosColor as bodasColor,
+  carnavalPlumas,
+  corporativo,
+  espectaculosRobots,
+  navidad,
+  quinceAlicia,
+  quinceVivo,
+} from "../assets/imagenes";
+import Foto from "../components/Foto";
+import { generarEnlaceWhatsAppDirecto } from "../utils/whatsapp";
+import Lightbox from "../components/Lightbox";
 
 const SLIDES = [quinceAlicia, espectaculosRobots, navidad, corporativo, quinceVivo];
+
+// Ancho que ocupa cada foto según el CSS (.services-grid y .gallery-grid en index.css): una columna
+// hasta 680px, dos hasta 1000px y 5 o 4 columnas dentro de .wrap (1180px - 48px de padding).
+const SIZES_SERVICIO = "(max-width: 680px) calc(100vw - 48px), (max-width: 1000px) calc(50vw - 33px), 212px";
+const SIZES_GALERIA = "(max-width: 680px) calc(100vw - 48px), (max-width: 1000px) calc(50vw - 32px), 271px";
+
+// El carrusel da una vuelta completa (vuelve a la primera foto), se queda quieto un rato y luego
+// da otra vuelta: así no está en movimiento todo el tiempo mientras se lee la página.
+const INTERVALO_MS = 4500;
+const DESCANSO_MS = 33_000;
 
 const SERVICES = [
   {
@@ -87,20 +102,59 @@ const TESTIMONIALS = [
 
 export default function Home() {
   const [current, setCurrent] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // El carrusel se pausa mientras el puntero o el foco del teclado están sobre el hero, y no
+  // avanza solo si el sistema pide menos movimiento (WCAG 2.2.2).
+  const pausadoRef = useRef(false);
+  // Cambios automáticos hechos en la vuelta actual. Al llegar a SLIDES.length la vuelta terminó
+  // y toca el descanso de DESCANSO_MS antes de seguir.
+  const pasosRef = useRef(0);
+  // Foto de la vista previa de la galería abierta en el lightbox.
+  const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
+  const cerrarFoto = useCallback(() => setFotoAbierta(null), []);
+  // Al entrar solo se baja la primera foto del carrusel. Cuando ya cargó se agrega siempre la
+  // siguiente a la que se ve (el carrusel avanza solo hacia adelante), así cada cambio encuentra la
+  // foto lista y no se ve el fondo vacío. Las demás se piden al acercar el puntero o el foco a la
+  // flecha "anterior" o a un punto, antes del clic.
+  const [primeraLista, setPrimeraLista] = useState(false);
+  const [cargadas, setCargadas] = useState<number[]>([0]);
+  const precargar = useCallback((...indices: number[]) => {
+    setCargadas((prev) => (indices.every((i) => prev.includes(i)) ? prev : [...new Set([...prev, ...indices])]));
+  }, []);
+  useEffect(() => {
+    precargar(...(primeraLista ? [current, (current + 1) % SLIDES.length] : [current]));
+  }, [current, primeraLista, precargar]);
+
+  const stop = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+  };
+
+  // Programa el siguiente cambio: cada INTERVALO_MS durante la vuelta, o DESCANSO_MS si la vuelta
+  // ya terminó (después del descanso empieza una vuelta nueva). Pausar con el puntero/foco o
+  // cambiar de foto a mano no reinicia la cuenta: si estaba descansando, el descanso vuelve a empezar.
+  const programar = () => {
+    const descansando = pasosRef.current >= SLIDES.length;
+    timerRef.current = setTimeout(
+      () => {
+        if (descansando) pasosRef.current = 0;
+        pasosRef.current += 1;
+        setCurrent((c) => (c + 1) % SLIDES.length);
+        programar();
+      },
+      descansando ? DESCANSO_MS : INTERVALO_MS
+    );
+  };
 
   const restart = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setCurrent((c) => (c + 1) % SLIDES.length);
-    }, 4500);
+    stop();
+    if (pausadoRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    programar();
   };
 
   useEffect(() => {
     restart();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return stop;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -109,21 +163,55 @@ export default function Home() {
     restart();
   };
 
+  const pausar = () => {
+    pausadoRef.current = true;
+    stop();
+  };
+  const reanudar = () => {
+    pausadoRef.current = false;
+    restart();
+  };
+
   return (
     <>
-      <section className="hero" id="inicio">
+      <section
+        className="hero"
+        id="inicio"
+        onMouseEnter={pausar}
+        onMouseLeave={reanudar}
+        onFocus={pausar}
+        onBlur={(e) => {
+          // Solo se reanuda cuando el foco sale del hero (no al pasar de un botón a otro dentro).
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) reanudar();
+        }}
+      >
         <div className="slides">
-          {SLIDES.map((src, i) => (
-            <div
-              key={i}
-              className={i === current ? "slide active" : "slide"}
-              style={{ backgroundImage: `url('${src}')` }}
-            />
+          {/* Cubre toda la pantalla también en celular (alto x proporción): siempre la versión grande. */}
+          {SLIDES.map((imagen, i) => (
+            <div key={i} className={i === current ? "slide active" : "slide"}>
+              {(i === current || cargadas.includes(i)) && (
+                <img
+                  src={imagen.src}
+                  width={imagen.width}
+                  height={imagen.height}
+                  alt=""
+                  fetchPriority={i === 0 ? "high" : "low"}
+                  onLoad={i === 0 ? () => setPrimeraLista(true) : undefined}
+                  onError={i === 0 ? () => setPrimeraLista(true) : undefined}
+                />
+              )}
+            </div>
           ))}
         </div>
 
-        <button className="slide-arrow prev" aria-label="Anterior" onClick={() => goTo(current - 1)}>
-          <svg><use href="#i-chevron" transform="scale(-1,1) translate(-24,0)" /></svg>
+        <button
+          className="slide-arrow prev"
+          aria-label="Anterior"
+          onPointerEnter={() => precargar((current - 1 + SLIDES.length) % SLIDES.length)}
+          onFocus={() => precargar((current - 1 + SLIDES.length) % SLIDES.length)}
+          onClick={() => goTo(current - 1)}
+        >
+          <svg className="icono-espejo"><use href="#i-chevron" /></svg>
         </button>
         <button className="slide-arrow next" aria-label="Siguiente" onClick={() => goTo(current + 1)}>
           <svg><use href="#i-chevron" /></svg>
@@ -168,7 +256,17 @@ export default function Home() {
 
         <div className="slide-dots">
           {SLIDES.map((_, i) => (
-            <button key={i} className={i === current ? "active" : ""} onClick={() => goTo(i)} />
+            <button
+              key={i}
+              type="button"
+              className={i === current ? "active" : ""}
+              aria-label={`Foto ${i + 1} de ${SLIDES.length}`}
+              aria-current={i === current ? "true" : undefined}
+              onPointerEnter={() => precargar(i)}
+              onPointerDown={() => precargar(i)}
+              onFocus={() => precargar(i)}
+              onClick={() => goTo(i)}
+            />
           ))}
         </div>
 
@@ -182,6 +280,9 @@ export default function Home() {
 
       <section className="promise">
         <div className="wrap">
+          {/* Encabezado de la sección solo para lectores de pantalla: sin él, los h3 de abajo
+              quedaban colgando directo del h1. */}
+          <h2 className="sr-only">Nuestra promesa</h2>
           <div className="promise-grid">
             <div className="promise-item">
               <div className="promise-icon"><svg><use href="#i-wand" /></svg></div>
@@ -222,33 +323,33 @@ export default function Home() {
           <div className="social-cards">
             <a href="https://www.instagram.com/showcompany_gt" target="_blank" rel="noreferrer" className="social-card sc-ig">
               <div className="sc-icon"><svg><use href="#i-ig" /></svg></div>
-              <h4>Instagram</h4>
+              <h3>Instagram</h3>
               <span>Reels y detrás de cámaras</span>
-              <span className="sc-btn">Seguir<svg><use href="#i-arrow" /></svg></span>
+              <span className="sc-btn">Seguir</span>
             </a>
             <a href="https://www.tiktok.com/@showcompanygt" target="_blank" rel="noreferrer" className="social-card sc-tiktok">
               <div className="sc-icon"><svg><use href="#i-tiktok" /></svg></div>
-              <h4>TikTok</h4>
+              <h3>TikTok</h3>
               <span>Los momentos más virales</span>
-              <span className="sc-btn">Seguir<svg><use href="#i-arrow" /></svg></span>
+              <span className="sc-btn">Seguir</span>
             </a>
             <a href="https://www.facebook.com/showcompany" target="_blank" rel="noreferrer" className="social-card sc-fb">
               <div className="sc-icon"><svg><use href="#i-fb" /></svg></div>
-              <h4>Facebook</h4>
+              <h3>Facebook</h3>
               <span>Álbumes completos de eventos</span>
-              <span className="sc-btn">Seguir<svg><use href="#i-arrow" /></svg></span>
+              <span className="sc-btn">Seguir</span>
             </a>
             <a href="https://www.youtube.com/@showcompanygt" target="_blank" rel="noreferrer" className="social-card sc-yt">
               <div className="sc-icon"><svg><use href="#i-yt" /></svg></div>
-              <h4>YouTube</h4>
+              <h3>YouTube</h3>
               <span>Shows completos en video</span>
-              <span className="sc-btn">Suscribirme<svg><use href="#i-arrow" /></svg></span>
+              <span className="sc-btn">Suscribirme</span>
             </a>
-            <a href="https://wa.me/50230738716" target="_blank" rel="noreferrer" className="social-card sc-wa">
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="social-card sc-wa">
               <div className="sc-icon"><svg><use href="#i-whatsapp" /></svg></div>
-              <h4>WhatsApp</h4>
+              <h3>WhatsApp</h3>
               <span>Cotiza directo, sin vueltas</span>
-              <span className="sc-btn">Escribir<svg><use href="#i-arrow" /></svg></span>
+              <span className="sc-btn">Escribir</span>
             </a>
           </div>
         </div>
@@ -263,7 +364,7 @@ export default function Home() {
           <div className="services-grid">
             {SERVICES.map((s) => (
               <div className="service-card" key={s.anchor}>
-                <div className="service-img"><img src={s.img} alt={s.alt} /></div>
+                <div className="service-img"><Foto imagen={s.img} sizes={SIZES_SERVICIO} alt={s.alt} loading="lazy" /></div>
                 <div className="service-body">
                   <div className="service-icon"><svg><use href={`#${s.icon}`} /></svg></div>
                   <h3>{s.title}</h3>
@@ -304,7 +405,7 @@ export default function Home() {
             {WHY_ITEMS.map((item) => (
               <div className="why-item" key={item.title}>
                 <div className="why-icon"><svg><use href={`#${item.icon}`} /></svg></div>
-                <h4>{item.title}</h4>
+                <h3>{item.title}</h3>
                 <p>{item.text}</p>
               </div>
             ))}
@@ -322,9 +423,8 @@ export default function Home() {
             {STEPS.map((s) => (
               <div className="step" key={s.n}>
                 <div className="step-circle">{s.n}</div>
-                <h4>{s.title}</h4>
+                <h3>{s.title}</h3>
                 <p>{s.text}</p>
-                {s.n !== STEPS.length && <span className="step-arrow"><svg><use href="#i-arrow" /></svg></span>}
               </div>
             ))}
           </div>
@@ -342,15 +442,25 @@ export default function Home() {
             <Link to="/galeria" className="btn btn-primary">Ver galería completa<svg><use href="#i-arrow" /></svg></Link>
           </div>
           <div className="gallery-grid">
-            {GALLERY_TEASER.map((item) => (
+            {GALLERY_TEASER.map((item, i) => (
               <div className="gallery-item" key={item.alt}>
-                <img src={item.img} alt={item.alt} />
+                <Foto imagen={item.img} sizes={SIZES_GALERIA} alt={item.alt} loading="lazy" />
                 <span className="gallery-tag">{item.tag}</span>
                 <span className="gallery-label">{item.label}</span>
                 <span className="gallery-zoom"><svg><use href="#i-search" /></svg></span>
+                {/* Botón transparente sobre toda la foto: abre el lightbox con clic, Enter o Espacio. */}
+                <button type="button" className="gallery-abrir" aria-label={`Ver foto: ${item.alt}`} onClick={() => setFotoAbierta(i)} />
               </div>
             ))}
           </div>
+          {fotoAbierta !== null && (
+            <Lightbox
+              fotos={GALLERY_TEASER.map((item) => ({ src: item.img.src, alt: item.alt, label: item.label, tag: item.tag }))}
+              indice={fotoAbierta}
+              onCambiar={setFotoAbierta}
+              onCerrar={cerrarFoto}
+            />
+          )}
         </div>
       </section>
 
@@ -385,7 +495,7 @@ export default function Home() {
           <p>Más de 25 años diseñando los mejores eventos de Guatemala. Cuéntanos tu proyecto y te presentamos una propuesta a la altura.</p>
           <div className="hero-ctas">
             <Link to="/contacto" className="btn btn-primary"><svg><use href="#i-wand" /></svg>Solicitar catálogo exclusivo</Link>
-            <a href="https://wa.me/50230738716" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
+            <a href={generarEnlaceWhatsAppDirecto()} target="_blank" rel="noreferrer" className="btn btn-ghost"><svg><use href="#i-whatsapp" /></svg>Escribir por WhatsApp</a>
           </div>
         </div>
       </section>

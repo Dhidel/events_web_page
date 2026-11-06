@@ -1,46 +1,53 @@
 import { Elysia, t } from "elysia";
 import { adminGuard } from "../middleware/adminGuard";
-import { Solicitud, SOLICITUD_ESTADOS } from "../models/Solicitud";
+import { SOLICITUD_ESTADOS, type SolicitudEstado } from "../models/Solicitud";
+import { adminDetail, errorResponses, IdParams, SolicitudSchema, toApi } from "../lib/apiSchemas";
+import { ApiError } from "../lib/errors";
+import { rechazarCamposExtra } from "../lib/validation";
+import { listarSolicitudes, actualizarEstadoSolicitud } from "../services/solicitud.service";
 
 const estadoSchema = t.Union(SOLICITUD_ESTADOS.map((value) => t.Literal(value)));
+const CambiarEstadoBody = t.Object({ estado: estadoSchema }, { additionalProperties: false });
 
-// Todas las rutas pasan por adminGuard (requiere JWT válido en Authorization: Bearer).
 export const adminCotizacionesRoutes = new Elysia({ prefix: "/api/admin/cotizaciones" })
   .use(adminGuard)
-  .onError(({ error, code, set }) => {
-    if (code === "VALIDATION") set.status = 422;
-    else if (!set.status || set.status === 200) set.status = 500;
-    return { error: error instanceof Error ? error.message : "Error interno del servidor." };
-  })
   .get(
     "/",
     async ({ query }) => {
-      const filter = query.estado ? { estado: query.estado } : {};
-      const items = await Solicitud.find(filter).sort({ createdAt: -1 });
-      return items.map((item) => item.toJSON());
+      const items = await listarSolicitudes({ estado: query.estado as SolicitudEstado | undefined });
+      return items.map((item) => toApi(SolicitudSchema, item));
     },
     {
       query: t.Object({
         estado: t.Optional(estadoSchema),
       }),
+      response: { 200: t.Array(SolicitudSchema), ...errorResponses(401, 422, 500) },
+      detail: {
+        ...adminDetail,
+        summary: "Listar solicitudes de cotización",
+        description:
+          "Devuelve las solicitudes de Contacto y Cotizador, las más recientes primero. ?estado= filtra por estado (nuevo, contactado, propuesta_enviada, confirmado).",
+      },
     }
   )
   .patch(
     "/:id",
-    async ({ params, body, set }) => {
-      const doc = await Solicitud.findById(params.id);
-      if (!doc) {
-        set.status = 404;
-        return { error: "Solicitud no encontrada." };
-      }
+    async ({ params, body }) => {
+      const doc = await actualizarEstadoSolicitud(params.id, body.estado as SolicitudEstado);
+      if (!doc) throw new ApiError(404, "Solicitud no encontrada.");
 
-      doc.estado = body.estado;
-      await doc.save();
-      return doc.toJSON();
+      return toApi(SolicitudSchema, doc);
     },
     {
-      body: t.Object({
-        estado: estadoSchema,
-      }),
+      params: IdParams,
+      parse: "json",
+      body: CambiarEstadoBody,
+      transform: rechazarCamposExtra(CambiarEstadoBody),
+      response: { 200: SolicitudSchema, ...errorResponses(400, 401, 404, 422, 500) },
+      detail: {
+        ...adminDetail,
+        summary: "Cambiar el estado de una solicitud",
+        description: "Actualiza el estado de seguimiento de una solicitud (p. ej. de \"nuevo\" a \"contactado\").",
+      },
     }
   );

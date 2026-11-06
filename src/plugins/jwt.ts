@@ -8,8 +8,12 @@ if (!JWT_SECRET) {
   );
 }
 
+export const SESION_HORAS = 12;
+
 export const authJwt = jwt({
   name: "jwt",
   secret: JWT_SECRET,
-  exp: "7d",
+  // Corto a propósito: si alguien roba el token, le sirve pocas horas. El admin vuelve a
+  // iniciar sesión cada día de trabajo.
+  exp: SESION_HORAS + "h",
 });

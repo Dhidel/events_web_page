@@ -69,11 +69,27 @@ async function comprimir(referencia: sharp.Sharp, codificar: (img: sharp.Sharp, 
 // admite transparencia y redondea las esquinas, que cortarían las puntas de la estrella.
 const PUBLICO = `${import.meta.dir}/../public`;
 const TRANSPARENTE = { r: 0, g: 0, b: 0, alpha: 0 };
-const ICONOS: { archivo: string; lado: number; fondo?: string; margen?: number }[] = [
-  { archivo: "favicon-16.png", lado: 16 },
-  { archivo: "favicon-32.png", lado: 32 },
+// En la pestaña el logo entero se veía muy chico: los favicons hacen zoom y recortan las puntas
+// de la estrella. 1.3 es el máximo con el que la «W» de SHOW no toca el borde (a 1.4 sí).
+const ZOOM_FAVICON = 1.3;
+// Centro del zoom, en fracción del cuadrado del dibujo: entre el centro de la estrella y «SHOW».
+// Si cambia el logo, hay que revisar este punto (y el zoom).
+const CENTRO_FAVICON = { x: 0.534, y: 0.549 };
+const ICONOS: { archivo: string; lado: number; fondo?: string; margen?: number; zoom?: number }[] = [
+  { archivo: "favicon-16.png", lado: 16, zoom: ZOOM_FAVICON },
+  { archivo: "favicon-32.png", lado: 32, zoom: ZOOM_FAVICON },
   { archivo: "apple-touch-icon.png", lado: 180, fondo: "#050608", margen: 0.1 },
 ];
+
+// Recorta un cuadrado de lado ladoDibujo / zoom alrededor de CENTRO_FAVICON (sin salirse del dibujo).
+async function acercar(cuadrado: Buffer, ladoDibujo: number, zoom: number) {
+  const lado = Math.round(ladoDibujo / zoom);
+  const limitar = (v: number) => Math.min(Math.max(Math.round(v - lado / 2), 0), ladoDibujo - lado);
+  return sharp(cuadrado)
+    .extract({ left: limitar(CENTRO_FAVICON.x * ladoDibujo), top: limitar(CENTRO_FAVICON.y * ladoDibujo), width: lado, height: lado })
+    .png()
+    .toBuffer();
+}
 
 async function generarIconos(ruta: string) {
   const dibujo = await sharp(ruta).rotate().trim({ threshold: 1 }).toBuffer({ resolveWithObject: true });
@@ -83,11 +99,12 @@ async function generarIconos(ruta: string) {
     .png()
     .toBuffer();
 
-  for (const { archivo, lado, fondo, margen = 0 } of ICONOS) {
+  for (const { archivo, lado, fondo, margen = 0, zoom } of ICONOS) {
     const interior = Math.round(lado * (1 - 2 * margen));
     const antes = Math.floor((lado - interior) / 2);
     const despues = lado - interior - antes;
-    const reducido = await sharp(cuadrado).resize(interior, interior, { kernel: "lanczos3" }).png().toBuffer();
+    const origen = zoom ? await acercar(cuadrado, ladoDibujo, zoom) : cuadrado;
+    const reducido = await sharp(origen).resize(interior, interior, { kernel: "lanczos3" }).png().toBuffer();
     let icono = sharp(reducido).extend({ top: antes, bottom: despues, left: antes, right: despues, background: fondo ?? TRANSPARENTE });
     if (fondo) icono = icono.flatten({ background: fondo });
     const datos = await icono.png({ compressionLevel: 9 }).toBuffer();

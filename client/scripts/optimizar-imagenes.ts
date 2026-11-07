@@ -4,7 +4,9 @@
 //   y sí agrega pérdida),
 // - src/assets/imagenes.ts con src, srcSet, width y height de cada foto (lo importan las páginas),
 // - el logo en 192 px y WebP sin pérdida (se muestra a 38-56 px; 192 cubre pantallas 3x),
-// - public/og-image.jpg recomprimida (las redes no siempre aceptan WebP en la vista previa).
+// - public/og-image.jpg recomprimida (las redes no siempre aceptan WebP en la vista previa),
+// - los íconos del sitio en public/ (favicon-16.png, favicon-32.png y apple-touch-icon.png) a
+//   partir del logo; los enlaza index.html.
 // Cada versión se compara con la original redimensionada sin pérdida (SSIM sobre la luminancia):
 // si no llega a SSIM_MINIMO se vuelve a comprimir con más calidad.
 //
@@ -62,6 +64,38 @@ async function comprimir(referencia: sharp.Sharp, codificar: (img: sharp.Sharp, 
   }
 }
 
+// Íconos del sitio. El logo se recorta a su dibujo (sin el margen transparente) para que se
+// distinga a 16 px. El de Apple lleva fondo sólido (el --paper del sitio) y un margen: iOS no
+// admite transparencia y redondea las esquinas, que cortarían las puntas de la estrella.
+const PUBLICO = `${import.meta.dir}/../public`;
+const TRANSPARENTE = { r: 0, g: 0, b: 0, alpha: 0 };
+const ICONOS: { archivo: string; lado: number; fondo?: string; margen?: number }[] = [
+  { archivo: "favicon-16.png", lado: 16 },
+  { archivo: "favicon-32.png", lado: 32 },
+  { archivo: "apple-touch-icon.png", lado: 180, fondo: "#050608", margen: 0.1 },
+];
+
+async function generarIconos(ruta: string) {
+  const dibujo = await sharp(ruta).rotate().trim({ threshold: 1 }).toBuffer({ resolveWithObject: true });
+  const ladoDibujo = Math.max(dibujo.info.width, dibujo.info.height);
+  const cuadrado = await sharp(dibujo.data)
+    .resize(ladoDibujo, ladoDibujo, { fit: "contain", background: TRANSPARENTE })
+    .png()
+    .toBuffer();
+
+  for (const { archivo, lado, fondo, margen = 0 } of ICONOS) {
+    const interior = Math.round(lado * (1 - 2 * margen));
+    const antes = Math.floor((lado - interior) / 2);
+    const despues = lado - interior - antes;
+    const reducido = await sharp(cuadrado).resize(interior, interior, { kernel: "lanczos3" }).png().toBuffer();
+    let icono = sharp(reducido).extend({ top: antes, bottom: despues, left: antes, right: despues, background: fondo ?? TRANSPARENTE });
+    if (fondo) icono = icono.flatten({ background: fondo });
+    const datos = await icono.png({ compressionLevel: 9 }).toBuffer();
+    await Bun.write(`${PUBLICO}/${archivo}`, datos);
+    console.log(`${archivo}  ${lado}x${lado}  ${(datos.length / 1024).toFixed(1)} KB`);
+  }
+}
+
 const camello = (nombre: string) => nombre.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
 const kb = (bytes: number) => `${(bytes / 1024).toFixed(0)} KB`;
 
@@ -92,6 +126,7 @@ for (const archivo of (await readdir(ORIGENES)).sort()) {
     importaciones.push(`import logo${LADO_LOGO} from "./img/logo-${LADO_LOGO}.webp";`);
     exportaciones.push(`export const logo = logo${LADO_LOGO};`);
     console.log(`logo  ${kb(pesoOriginal)} -> ${kb(datos.length)}  (${LADO_LOGO}px, sin pérdida)`);
+    await generarIconos(ruta);
     continue;
   }
 

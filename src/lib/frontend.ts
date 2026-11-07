@@ -17,7 +17,7 @@ const escaparRegex = (texto: string) => texto.replace(/[.*+?^${}()|[\]\\]/g, "\\
 
 // Caché del navegador. Los archivos de /assets llevan un hash en el nombre que cambia con su
 // contenido (index-BKTcJBKK.js): se pueden guardar un año sin riesgo de servir uno viejo. El
-// resto (favicon.svg, og-image.jpg…) tiene nombre fijo: un día.
+// resto (favicon-32.png, og-image.jpg…) tiene nombre fijo: un día.
 const CACHE_ASSETS = "public, max-age=31536000, immutable";
 const MAX_AGE_RESTO = 86400;
 
